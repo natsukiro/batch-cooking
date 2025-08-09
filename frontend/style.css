@@ -1,0 +1,41 @@
+/* Ce fichier contiendra les styles pour l'interface utilisateur. */
+body {
+    font-family: sans-serif;
+    margin: 2em;
+}
+
+#copy-button {
+    display: none; /* Caché par défaut */
+    margin-top: 1em;
+}
+
+#plan {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 20px;
+}
+
+.recipe-card {
+    border: 1px solid #ccc;
+    border-radius: 8px;
+    padding: 10px;
+    width: 200px;
+    text-align: center;
+    box-shadow: 2px 2px 8px rgba(0,0,0,0.1);
+}
+
+.recipe-card a {
+    text-decoration: none;
+    color: inherit;
+}
+
+.recipe-card img {
+    width: 100%;
+    height: auto;
+    border-radius: 4px;
+}
+
+.recipe-card h3 {
+    margin: 10px 0 0;
+    font-size: 1em;
+}

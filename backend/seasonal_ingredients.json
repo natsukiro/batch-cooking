@@ -1,0 +1,22 @@
+{
+  "ete": {
+    "legumes": [
+      "tomate",
+      "courgette",
+      "aubergine",
+      "poivron",
+      "concombre",
+      "oignon",
+      "ail",
+      "basilic"
+    ],
+    "fruits": [
+      "melon",
+      "pasteque",
+      "abricot",
+      "peche",
+      "nectarine",
+      "figue"
+    ]
+  }
+}
