@@ -5,6 +5,8 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.IntrinsicSize
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -50,6 +52,7 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.petitrythme.data.Category
 import app.petitrythme.data.DiaperKind
+import app.petitrythme.data.Drafts
 import app.petitrythme.data.Event
 import app.petitrythme.data.EventType
 import app.petitrythme.data.NursingTimer
@@ -59,6 +62,7 @@ import app.petitrythme.ui.Fmt
 import app.petitrythme.ui.MainViewModel
 import app.petitrythme.ui.components.ConfirmDialog
 import app.petitrythme.ui.components.Pill
+import app.petitrythme.ui.components.TimePickDialog
 import app.petitrythme.ui.components.rememberNow
 import app.petitrythme.ui.describe
 import app.petitrythme.ui.nextSide
@@ -78,6 +82,7 @@ import kotlinx.coroutines.launch
 fun HomeScreen(
     vm: MainViewModel,
     onOpenEntry: (Event) -> Unit,
+    onFinishPump: (Event) -> Unit,
     onQuickSave: (Event, String) -> Unit,
     onSaved: (Event, String) -> Unit,
     onTimerStarted: () -> Unit,
@@ -88,6 +93,8 @@ fun HomeScreen(
     val lastFeed by vm.lastFeed.collectAsStateWithLifecycle()
     val lastNursing by vm.lastNursing.collectAsStateWithLifecycle()
     val lastDiaper by vm.lastDiaper.collectAsStateWithLifecycle()
+    val lastPoo by vm.lastPoo.collectAsStateWithLifecycle()
+    val lastBottle by vm.lastBottle.collectAsStateWithLifecycle()
     val lastSleep by vm.lastSleep.collectAsStateWithLifecycle()
     val now by rememberNow()
     val today = Fmt.date(now)
@@ -110,7 +117,7 @@ fun HomeScreen(
         Row(Modifier.padding(top = 12.dp), verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
                 Text(
-                    profile.name.ifBlank { "Mon bébé" },
+                    profile.name.trim().ifBlank { "Mon bébé" },
                     style = MaterialTheme.typography.headlineMedium,
                 )
                 val b = profile.birthDate
@@ -136,6 +143,7 @@ fun HomeScreen(
                     }
                 },
                 onCancel = vm::cancelNursing,
+                onEditStart = vm::setNursingStart,
             )
         }
         timers.sleepStart?.let { s ->
@@ -143,6 +151,8 @@ fun HomeScreen(
                 type = EventType.SLEEP,
                 title = "Dort depuis ${Fmt.time(s)}",
                 elapsed = now - s,
+                start = s,
+                onEditStart = vm::setSleepStart,
                 finishLabel = "Réveillé·e",
                 onFinish = {
                     scope.launch {
@@ -157,26 +167,46 @@ fun HomeScreen(
                 type = EventType.PUMP,
                 title = "Tire-lait depuis ${Fmt.time(p)}",
                 elapsed = now - p,
+                start = p,
+                onEditStart = vm::setPumpStart,
                 finishLabel = "Terminer",
-                onFinish = { onOpenEntry(Event(type = EventType.PUMP, time = p, endTime = System.currentTimeMillis())) },
+                onFinish = {
+                    onFinishPump(Event(type = EventType.PUMP, time = p, endTime = System.currentTimeMillis(), sub = "BOTH"))
+                },
                 onCancel = vm::cancelPump,
             )
         }
 
         // Depuis…
-        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+        Row(Modifier.height(IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             val feed = lastFeed
+            val nursing = timers.nursing
             SinceCard(
                 Modifier.weight(1f), Category.FEED, "Repas",
-                big = feed?.let { Fmt.durationCompact(now - it.time) } ?: "—",
-                small = feed?.let { describe(it).first.substringBefore(" · ") + " à " + Fmt.time(it.time) } ?: "Aucun",
-                onClick = { feed?.let(onOpenEntry) },
+                big = when {
+                    nursing != null -> Fmt.durationCompact(now - nursing.startedAt)
+                    feed != null -> Fmt.durationCompact(now - feed.time)
+                    else -> "—"
+                },
+                small = when {
+                    nursing != null -> "Tétée en cours"
+                    feed != null -> describe(feed).first.substringBefore(" · ") + " à " + Fmt.time(feed.time)
+                    else -> "Aucun"
+                },
+                onClick = { if (nursing == null) feed?.let(onOpenEntry) },
             )
             val d = lastDiaper
+            val poo = lastPoo
             SinceCard(
                 Modifier.weight(1f), Category.DIAPER, "Couche",
                 big = d?.let { Fmt.durationCompact(now - it.time) } ?: "—",
-                small = d?.let { describe(it).first + " à " + Fmt.time(it.time) } ?: "Aucune",
+                small = when {
+                    d == null -> "Aucune"
+                    // Le dernier caca est souvent la question du pédiatre : on l'affiche s'il est plus ancien.
+                    poo != null && poo.id != d.id -> "${describe(d).first} à ${Fmt.time(d.time)}\n💩 ${Fmt.whenShort(poo.time, now)}"
+                    poo == null && DiaperKind.of(d.sub)?.hasPoo != true -> "${describe(d).first} à ${Fmt.time(d.time)}\n💩 aucun noté"
+                    else -> "${describe(d).first} à ${Fmt.time(d.time)}"
+                },
                 onClick = { d?.let(onOpenEntry) },
             )
             val sleeping = timers.sleepStart
@@ -238,10 +268,8 @@ fun HomeScreen(
                         modifier = Modifier.weight(1f),
                     ) {
                         haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                        onQuickSave(
-                            Event(type = EventType.DIAPER, time = System.currentTimeMillis(), sub = k.code),
-                            "${k.label} noté à ${Fmt.time(System.currentTimeMillis())}",
-                        )
+                        val e = Event(type = EventType.DIAPER, time = System.currentTimeMillis(), sub = k.code)
+                        onQuickSave(e, "${describe(e).first} noté à ${Fmt.time(e.time)}")
                     }
                 }
             }
@@ -262,13 +290,13 @@ fun HomeScreen(
                     onTimerStarted()
                 }
             }
-            Tile(EventType.BOTTLE, "Biberon", "${profile.lastBottleMl} ml la dernière fois", Modifier.weight(1f)) {
-                onOpenEntry(
-                    Event(
-                        type = EventType.BOTTLE, time = System.currentTimeMillis(),
-                        amountMl = profile.lastBottleMl.toDouble(), sub = profile.lastMilk.code,
-                    )
-                )
+            val lb = lastBottle
+            Tile(
+                EventType.BOTTLE, "Biberon",
+                lb?.amountMl?.let { "${Fmt.num(it, 0)} ml la dernière fois" } ?: "Quantité et type de lait",
+                Modifier.weight(1f),
+            ) {
+                onOpenEntry(Drafts.bottle(lb))
             }
         }
 
@@ -289,24 +317,13 @@ fun HomeScreen(
                         if (t == EventType.PUMP && timers.pumpStart == null) {
                             vm.startPump(); onTimerStarted()
                         } else {
-                            onOpenEntry(defaultDraft(t))
+                            onOpenEntry(Drafts.forType(t, lastBottle = lastBottle))
                         }
                     }
                 }
             }
         }
     }
-}
-
-fun defaultDraft(t: EventType, at: Long = System.currentTimeMillis()): Event = when (t) {
-    EventType.SLEEP -> Event(type = t, time = at - 60 * 60_000L, endTime = at)
-    EventType.ACTIVITY -> Event(type = t, time = at - 15 * 60_000L, endTime = at, detail = "Sur le ventre")
-    EventType.PUMP -> Event(type = t, time = at - 15 * 60_000L, endTime = at, sub = "BOTH", amountMl = 80.0)
-    EventType.NURSING -> Event(type = t, time = at - 15 * 60_000L, leftSec = 0, rightSec = 0)
-    EventType.TEMPERATURE -> Event(type = t, time = at, value = 37.0)
-    EventType.SOLID -> Event(type = t, time = at, sub = "MID")
-    EventType.DIAPER -> Event(type = t, time = at, sub = DiaperKind.PEE.code)
-    else -> Event(type = t, time = at)
 }
 
 @Composable
@@ -320,7 +337,7 @@ private fun SinceCard(
 ) {
     Card(
         onClick = onClick,
-        modifier = modifier,
+        modifier = modifier.fillMaxHeight(),
         colors = CardDefaults.cardColors(containerColor = category.container()),
         shape = RoundedCornerShape(20.dp),
     ) {
@@ -336,9 +353,8 @@ private fun SinceCard(
                 small,
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                maxLines = 2,
+                maxLines = 3,
                 overflow = TextOverflow.Ellipsis,
-                minLines = 2,
             )
         }
     }
@@ -513,6 +529,7 @@ private fun NursingTimerCard(
     onSide: (Side) -> Unit,
     onFinish: () -> Unit,
     onCancel: () -> Unit,
+    onEditStart: (Long) -> Unit,
 ) {
     var confirmCancel by remember { mutableStateOf(false) }
     val accent = Category.FEED.color()
@@ -526,11 +543,7 @@ private fun NursingTimerCard(
                 Pill(if (n.paused) "En pause" else "En cours · ${n.side?.label?.lowercase()}", accent)
             }
             Text(Fmt.chrono(n.totalAt(now)), style = ChronoStyle, modifier = Modifier.padding(vertical = 4.dp))
-            Text(
-                "Commencée à ${Fmt.time(n.startedAt)}",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
+            EditableStart("Commencée à", n.startedAt, onEditStart)
             Spacer(Modifier.height(12.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 Side.entries.forEach { side ->
@@ -600,6 +613,8 @@ private fun SimpleTimerCard(
     type: EventType,
     title: String,
     elapsed: Long,
+    start: Long,
+    onEditStart: (Long) -> Unit,
     finishLabel: String,
     onFinish: () -> Unit,
     onCancel: () -> Unit,
@@ -614,6 +629,7 @@ private fun SimpleTimerCard(
                 Text("${type.emoji} ${type.label}", style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f))
                 Pill(title, type.category.color())
             }
+            EditableStart("Début", start, onEditStart)
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(Fmt.chrono(elapsed), style = ChronoStyle, modifier = Modifier.weight(1f))
                 TextButton(onClick = { confirmCancel = true }) { Text("Annuler") }
@@ -631,5 +647,30 @@ private fun SimpleTimerCard(
             "Annuler le chronomètre ?", "Rien ne sera enregistré.", "Oui, annuler",
             onConfirm = onCancel, onDismiss = { confirmCancel = false },
         )
+    }
+}
+
+/** « Commencée à 11:12 ✎ » : toucher pour corriger l'heure si le chrono a été lancé en retard. */
+@Composable
+private fun EditableStart(label: String, start: Long, onChange: (Long) -> Unit) {
+    var pick by remember { mutableStateOf(false) }
+    TextButton(onClick = { pick = true }, contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 8.dp)) {
+        Text(
+            "$label ${Fmt.time(start)}",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Spacer(Modifier.width(6.dp))
+        Icon(Icons.Rounded.Edit, contentDescription = "Corriger l'heure de début", modifier = Modifier.size(16.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+    }
+    if (pick) {
+        val zdt = java.time.Instant.ofEpochMilli(start).atZone(Fmt.zone)
+        TimePickDialog(zdt.toLocalTime(), onDismiss = { pick = false }) { t ->
+            val now = System.currentTimeMillis()
+            var candidate = Fmt.today().atTime(t).atZone(Fmt.zone).toInstant().toEpochMilli()
+            // Une heure « dans le futur » veut dire hier (ex. 23:50 choisi à 00:20).
+            if (candidate > now) candidate -= 86_400_000L
+            onChange(candidate)
+        }
     }
 }

@@ -1,4 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Petit Rythme</string>
+    <string name="widget_name">Petit Rythme</string>
+    <string name="widget_description">Couches, tétées, biberon et dodo en un appui</string>
 </resources>

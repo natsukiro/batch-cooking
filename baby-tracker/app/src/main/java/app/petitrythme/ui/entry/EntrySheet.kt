@@ -98,7 +98,9 @@ fun EntrySheet(
         scope.launch { sheetState.hide() }.invokeOnCompletion { then(); onDismiss() }
     }
 
-    val error: String? = when (e.type) {
+    val soon = System.currentTimeMillis() + 2 * MIN
+    val inFuture = e.time > soon || (e.type != EventType.NURSING && (e.endTime ?: 0) > soon)
+    val error: String? = if (inFuture) "L'heure indiquée est dans le futur." else when (e.type) {
         EventType.SLEEP -> if ((e.endTime ?: 0) <= e.time) "L'heure de réveil doit être après l'endormissement." else null
         EventType.NURSING -> if ((e.leftSec ?: 0) + (e.rightSec ?: 0) <= 0) "Indiquez la durée d'au moins un sein." else null
         EventType.GROWTH -> if (e.value == null && e.heightCm == null && e.headCm == null) "Indiquez au moins une mesure." else null
@@ -171,7 +173,9 @@ fun EntrySheet(
             ) {
                 Icon(Icons.Rounded.Check, contentDescription = null)
                 Spacer(Modifier.width(8.dp))
-                Text(if (isNew) "Enregistrer" else "Mettre à jour", style = MaterialTheme.typography.titleMedium)
+                // Pour le biberon, la quantité est rappelée sur le bouton : on confirme d'un coup d'œil.
+                val amount = if (e.type == EventType.BOTTLE) e.amountMl?.let { " · ${Fmt.num(it, 0)} ml" } ?: "" else ""
+                Text((if (isNew) "Enregistrer" else "Mettre à jour") + amount, style = MaterialTheme.typography.titleMedium)
             }
         }
     }
@@ -190,7 +194,7 @@ private fun normalize(e: Event): Event = when (e.type) {
         val l = e.leftSec ?: 0
         val r = e.rightSec ?: 0
         val last = Side.of(e.sub) ?: if (r > 0 && l == 0) Side.R else Side.L
-        e.copy(endTime = e.time + (l + r) * 1000L, sub = last.code)
+        e.copy(endTime = e.time + (l + r) * 1000L, sub = last.code, note = e.note?.trim()?.ifEmpty { null })
     }
     else -> e.copy(note = e.note?.trim()?.ifEmpty { null })
 }

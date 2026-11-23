@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Aperçu montré dans la liste des widgets du lanceur. -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/widget_preview_bg"
+    android:orientation="vertical"
+    android:padding="10dp">
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="🍽 14:05   🧷 14:40"
+        android:textColor="#221A1D"
+        android:textSize="13sp" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="48dp"
+        android:layout_marginTop="6dp"
+        android:orientation="horizontal">
+
+        <TextView style="@style/WidgetPreviewButton" android:text="💧\nPipi" />
+        <TextView style="@style/WidgetPreviewButton" android:layout_marginStart="6dp" android:text="💩\nCaca" />
+        <TextView style="@style/WidgetPreviewButton" android:layout_marginStart="6dp" android:text="🍼\nBiberon" />
+        <TextView style="@style/WidgetPreviewButton" android:layout_marginStart="6dp" android:text="😴\nDodo" />
+    </LinearLayout>
+</LinearLayout>

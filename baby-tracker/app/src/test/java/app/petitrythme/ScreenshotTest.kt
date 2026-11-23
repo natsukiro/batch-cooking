@@ -145,6 +145,46 @@ class ScreenshotTest {
         shot("04_saisie_biberon")
     }
 
+    /** Régression : après « Terminer » puis « Enregistrer », le chrono du tire-lait doit s'arrêter. */
+    @Test
+    fun pumpTimerStopsAfterSave() {
+        seed(withTimer = false)
+        val app = ApplicationProvider.getApplicationContext<BabyApp>()
+        app.timers.startPump(System.currentTimeMillis() - 12 * MIN)
+        restart()
+        waitFor("Tire-lait depuis")
+        rule.onNodeWithText("Terminer").performScrollTo().performClick()
+        waitFor("Quantité tirée")
+        rule.onNodeWithText("Enregistrer").performScrollTo().performClick()
+        settle()
+        org.junit.Assert.assertNull(app.timers.state.value.pumpStart)
+        val pumps = runBlocking { app.db.events().all() }.filter { it.type == EventType.PUMP }
+        org.junit.Assert.assertEquals(1, pumps.size)
+    }
+
+    @Test
+    fun settings() {
+        seed(withTimer = false)
+        restart()
+        waitFor("Léa")
+        rule.onNodeWithText("Réglages").performClick()
+        waitFor("Rappel de repas")
+        shot("15_reglages")
+    }
+
+    /** La petite fenêtre « biberon » ouverte depuis le widget, par-dessus l'écran d'accueil. */
+    @Test
+    fun quickBottle() {
+        seed(withTimer = false)
+        val ctx = ApplicationProvider.getApplicationContext<BabyApp>()
+        ActivityScenario.launch<app.petitrythme.quick.QuickEntryActivity>(
+            app.petitrythme.quick.QuickEntryActivity.intent(ctx, EventType.BOTTLE)
+        )
+        settle()
+        waitFor("Quantité bue")
+        shot("09_saisie_rapide_biberon")
+    }
+
     @Test
     fun diaperDetails() {
         seed(withTimer = false)

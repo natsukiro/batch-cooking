@@ -33,11 +33,11 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
+import app.petitrythme.data.Drafts
 import app.petitrythme.data.Event
 import app.petitrythme.ui.entry.EntrySheet
 import app.petitrythme.ui.entry.TypePickerSheet
 import app.petitrythme.ui.home.HomeScreen
-import app.petitrythme.ui.home.defaultDraft
 import app.petitrythme.ui.journal.JournalScreen
 import app.petitrythme.ui.settings.SettingsScreen
 import app.petitrythme.ui.stats.StatsScreen
@@ -56,6 +56,8 @@ private enum class Tab(val label: String, val icon: ImageVector) {
 fun AppRoot(vm: MainViewModel) {
     var tab by rememberSaveable { mutableStateOf(Tab.HOME) }
     var draft by remember { mutableStateOf<Event?>(null) }
+    // Vrai quand la saisie en cours termine le chrono du tire-lait (il faut alors l'arrêter).
+    var draftEndsPump by remember { mutableStateOf(false) }
     var pickTypeFor by remember { mutableStateOf<LocalDate?>(null) }
     var journalDay by rememberSaveable { mutableLongStateOf(Fmt.today().toEpochDay()) }
     val snackbar = remember { SnackbarHostState() }
@@ -67,7 +69,10 @@ fun AppRoot(vm: MainViewModel) {
         if (it) vm.timers.value.let { t -> app.petitrythme.notify.TimerNotifier.sync(context, t) }
     }
     fun onTimerStarted() {
-        if (context.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
+        // On ne demande qu'une fois : redemander à chaque chrono après un refus serait pénible.
+        if (context.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED &&
+            vm.firstTime("notif_permission")
+        ) {
             notifPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
         }
     }
@@ -101,7 +106,11 @@ fun AppRoot(vm: MainViewModel) {
                 Tab.entries.forEach { t ->
                     NavigationBarItem(
                         selected = tab == t,
-                        onClick = { tab = t },
+                        onClick = {
+                            // Le journal s'ouvre toujours sur aujourd'hui depuis la barre du bas.
+                            if (t == Tab.JOURNAL && tab != Tab.JOURNAL) journalDay = Fmt.today().toEpochDay()
+                            tab = t
+                        },
                         icon = { Icon(t.icon, contentDescription = null) },
                         label = { Text(t.label) },
                     )
@@ -117,7 +126,8 @@ fun AppRoot(vm: MainViewModel) {
             when (tab) {
                 Tab.HOME -> HomeScreen(
                     vm,
-                    onOpenEntry = { draft = it },
+                    onOpenEntry = { draft = it; draftEndsPump = false },
+                    onFinishPump = { draft = it; draftEndsPump = true },
                     onQuickSave = ::quickSave,
                     onSaved = { e, text -> message(text, "Modifier") { draft = e } },
                     onTimerStarted = ::onTimerStarted,
@@ -142,21 +152,18 @@ fun AppRoot(vm: MainViewModel) {
             pickTypeFor = null
             val at = if (day == Fmt.today()) System.currentTimeMillis()
             else day.atTime(LocalTime.now()).atZone(Fmt.zone).toInstant().toEpochMilli()
-            if (type == app.petitrythme.data.EventType.BOTTLE) {
-                val p = vm.profile.value
-                draft = Event(type = type, time = at, amountMl = p.lastBottleMl.toDouble(), sub = p.lastMilk.code)
-            } else {
-                draft = defaultDraft(type, at)
-            }
+            draft = Drafts.forType(type, at, vm.lastBottle.value)
+            draftEndsPump = false
         }
     }
 
     draft?.let { d ->
         EntrySheet(
             initial = d,
-            onDismiss = { draft = null },
+            onDismiss = { draft = null; draftEndsPump = false },
             onSave = { e ->
                 vm.save(e)
+                if (draftEndsPump) vm.cancelPump()
                 message(if (e.id == 0L) "${describe(e).first} enregistré" else "Modification enregistrée")
             },
             onDelete = ::deleted,

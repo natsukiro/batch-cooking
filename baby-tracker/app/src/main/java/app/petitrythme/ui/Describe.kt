@@ -127,3 +127,19 @@ fun summarize(events: List<Event>, from: Long, to: Long): DaySummary {
     }
     return s
 }
+
+/** Un jour « suivi » : au moins une saisie de repas, couche ou sommeil. */
+fun DaySummary.hasData() = feeds > 0 || solids > 0 || pee > 0 || poo > 0 || sleepMs > 0
+
+/**
+ * Intervalle moyen entre deux repas, mesuré début à début.
+ * Les repas à moins de 30 min d'écart comptent comme un seul (tétée + complément),
+ * et les écarts de plus de 8 h sont ignorés (oubli de saisie probable).
+ */
+fun meanFeedInterval(events: List<Event>, from: Long, to: Long): Long? {
+    val times = events.filter { it.type.isFeeding && it.time in from until to }.map { it.time }.sorted()
+    val meals = mutableListOf<Long>()
+    for (t in times) if (meals.isEmpty() || t - meals.last() > 30 * 60_000L) meals += t
+    val gaps = meals.zipWithNext { a, b -> b - a }.filter { it <= 8 * 3_600_000L }
+    return if (gaps.isEmpty()) null else gaps.average().toLong()
+}

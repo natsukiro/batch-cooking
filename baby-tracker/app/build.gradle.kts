@@ -13,8 +13,8 @@ android {
         applicationId = "app.petitrythme"
         minSdk = 32
         targetSdk = 36
-        versionCode = 1
-        versionName = "1.0"
+        versionCode = 2
+        versionName = "1.1"
     }
 
     // Clé de signature versionnée dans le dépôt : elle permet d'installer les
@@ -82,6 +82,8 @@ dependencies {
     implementation("androidx.compose.material:material-icons-extended")
     implementation("androidx.compose.ui:ui-tooling-preview")
     debugImplementation("androidx.compose.ui:ui-tooling")
+
+    implementation("androidx.glance:glance-appwidget:1.1.1")
 
     implementation("androidx.room:room-runtime:2.7.2")
     implementation("androidx.room:room-ktx:2.7.2")

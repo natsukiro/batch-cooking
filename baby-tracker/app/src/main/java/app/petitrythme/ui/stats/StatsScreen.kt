@@ -51,6 +51,8 @@ import app.petitrythme.ui.Fmt
 import app.petitrythme.ui.MainViewModel
 import app.petitrythme.ui.components.Segmented
 import app.petitrythme.ui.components.rememberNow
+import app.petitrythme.ui.hasData
+import app.petitrythme.ui.meanFeedInterval
 import app.petitrythme.ui.summarize
 import app.petitrythme.ui.theme.color
 import java.time.LocalDate
@@ -90,7 +92,10 @@ fun StatsScreen(vm: MainViewModel, onOpenDay: (LocalDate) -> Unit) {
             RhythmChart(days.reversed(), events, timers.sleepStart, now, onOpenDay)
         }
 
-        AveragesCard(summaries.dropLast(1).ifEmpty { summaries })
+        // Moyennes sur les jours complets réellement suivis (pas les jours vides avant le début du suivi).
+        val tracked = summaries.dropLast(1).filter { it.hasData() }
+            .ifEmpty { listOfNotNull(summaries.last().takeIf { it.hasData() }) }
+        AveragesCard(tracked, complete = summaries.dropLast(1).any { it.hasData() }, interval = meanFeedInterval(events, from, to))
 
         BarCard("Repas par jour", days, summaries.map { it.feeds.toDouble() }, Category.FEED) { "${it.toInt()}" }
         BarCard("Sommeil", days, summaries.map { it.sleepMs / 3_600_000.0 }, Category.SLEEP) { Fmt.durationCompact((it * 3_600_000).toLong()) }
@@ -245,14 +250,20 @@ private fun LegendItem(label: String, draw: androidx.compose.ui.graphics.drawsco
 }
 
 @Composable
-private fun AveragesCard(s: List<DaySummary>) {
+private fun AveragesCard(s: List<DaySummary>, complete: Boolean, interval: Long?) {
     val n = s.size.coerceAtLeast(1)
     fun avg(f: (DaySummary) -> Double) = s.sumOf(f) / n
-    ChartCard("Moyennes par jour", if (s.size > 1) "Sur les ${s.size} derniers jours complets" else "Aujourd'hui") {
+    val subtitle = when {
+        s.isEmpty() -> "Pas encore de données"
+        !complete -> "Aujourd'hui (pas encore de journée complète)"
+        s.size == 1 -> "Sur le dernier jour complet"
+        else -> "Sur les ${s.size} derniers jours complets suivis"
+    }
+    ChartCard("Moyennes par jour", subtitle) {
+        if (s.isEmpty()) return@ChartCard
         val items = buildList {
             add("Repas" to Fmt.num(avg { it.feeds.toDouble() }, 1))
-            val feeds = avg { it.feeds.toDouble() }
-            if (feeds > 0) add("Intervalle moyen" to Fmt.durationCompact((24 * 3_600_000 / feeds).toLong()))
+            if (interval != null) add("Entre deux repas" to Fmt.durationCompact(interval))
             add("Sommeil" to Fmt.durationCompact(avg { it.sleepMs.toDouble() }.toLong()))
             add("Plus long dodo" to Fmt.durationCompact(s.maxOfOrNull { it.longestSleepMs } ?: 0))
             add("Pipis" to Fmt.num(avg { it.pee.toDouble() }, 1))

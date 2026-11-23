@@ -26,6 +26,12 @@ interface EventDao {
     @Query("SELECT * FROM events WHERE type = :type ORDER BY time DESC LIMIT :limit")
     fun observeRecent(type: EventType, limit: Int): Flow<List<Event>>
 
+    @Query("SELECT * FROM events WHERE type = 'DIAPER' AND sub IN ('POO', 'BOTH') ORDER BY time DESC LIMIT 1")
+    fun observeLastPoo(): Flow<Event?>
+
+    @Query("SELECT * FROM events WHERE type IN (:types) ORDER BY time DESC LIMIT 1")
+    suspend fun latest(types: List<EventType>): Event?
+
     @Query("SELECT * FROM events ORDER BY time ASC")
     suspend fun all(): List<Event>
 

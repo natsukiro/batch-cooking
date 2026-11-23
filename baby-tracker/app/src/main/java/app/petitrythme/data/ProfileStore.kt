@@ -11,11 +11,11 @@ data class Profile(
     val name: String = "",
     val birthDate: LocalDate? = null,
     val theme: ThemeMode = ThemeMode.SYSTEM,
-    val lastBottleMl: Int = 90,
-    val lastMilk: MilkKind = MilkKind.FORMULA,
+    /** Rappel « prochain repas » en minutes après le début du dernier repas ; 0 = désactivé. */
+    val feedReminderMin: Int = 0,
 )
 
-class ProfileStore(context: Context) {
+class ProfileStore(context: Context, private val onChange: (Profile) -> Unit = {}) {
     private val prefs = context.getSharedPreferences("profile", Context.MODE_PRIVATE)
     private val _state = MutableStateFlow(load())
     val state: StateFlow<Profile> = _state
@@ -24,8 +24,7 @@ class ProfileStore(context: Context) {
         name = prefs.getString("name", "") ?: "",
         birthDate = prefs.getString("birth", null)?.let { runCatching { LocalDate.parse(it) }.getOrNull() },
         theme = ThemeMode.entries.getOrElse(prefs.getInt("theme", 0)) { ThemeMode.SYSTEM },
-        lastBottleMl = prefs.getInt("lastBottleMl", 90),
-        lastMilk = MilkKind.of(prefs.getString("lastMilk", null)) ?: MilkKind.FORMULA,
+        feedReminderMin = prefs.getInt("feedReminderMin", 0),
     )
 
     fun update(transform: (Profile) -> Profile) {
@@ -34,9 +33,16 @@ class ProfileStore(context: Context) {
             .putString("name", p.name)
             .putString("birth", p.birthDate?.toString())
             .putInt("theme", p.theme.ordinal)
-            .putInt("lastBottleMl", p.lastBottleMl)
-            .putString("lastMilk", p.lastMilk.code)
+            .putInt("feedReminderMin", p.feedReminderMin)
             .apply()
         _state.value = p
+        onChange(p)
+    }
+
+    /** Indicateurs « déjà fait une fois » (ex. demande d'autorisation des notifications). */
+    fun once(key: String): Boolean {
+        if (prefs.getBoolean("once_$key", false)) return false
+        prefs.edit().putBoolean("once_$key", true).apply()
+        return true
     }
 }

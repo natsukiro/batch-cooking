@@ -54,6 +54,16 @@ object Fmt {
         return if (h > 0) "%d:%02d:%02d".format(h, m, sec) else "%02d:%02d".format(m, sec)
     }
 
+    /** "08:05" aujourd'hui, "hier 22:10", sinon "il y a 3 j". */
+    fun whenShort(ms: Long, now: Long): String {
+        val days = ChronoUnit.DAYS.between(date(ms), date(now))
+        return when (days) {
+            0L -> time(ms)
+            1L -> "hier ${time(ms)}"
+            else -> "il y a $days j"
+        }
+    }
+
     fun ago(ms: Long, now: Long): String {
         val d = now - ms
         return if (d < 60_000) "à l'instant" else "il y a ${duration(d)}"

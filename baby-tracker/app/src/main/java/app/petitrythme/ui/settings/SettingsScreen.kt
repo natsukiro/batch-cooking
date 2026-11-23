@@ -41,6 +41,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.petitrythme.data.ThemeMode
 import app.petitrythme.ui.Fmt
 import app.petitrythme.ui.MainViewModel
+import app.petitrythme.ui.components.ChoiceChips
 import app.petitrythme.ui.components.ConfirmDialog
 import app.petitrythme.ui.components.DatePickDialog
 import app.petitrythme.ui.components.Segmented
@@ -73,6 +74,11 @@ fun SettingsScreen(vm: MainViewModel, onMessage: (String) -> Unit) {
     val importJson = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         if (uri != null) pendingRestore = uri
     }
+    // Le rappel n'a de sens que si les notifications sont autorisées : on les demande en l'activant.
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val notifPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+        if (!granted) onMessage("Autorisez les notifications de Petit Rythme dans les réglages Android pour recevoir le rappel.")
+    }
 
     Column(
         Modifier
@@ -85,10 +91,12 @@ fun SettingsScreen(vm: MainViewModel, onMessage: (String) -> Unit) {
 
         Group("Bébé") {
             Column(Modifier.padding(16.dp)) {
-                var name by remember(profile.name) { mutableStateOf(profile.name) }
+                // État local : le prénom est enregistré tel quel (les espaces en fin de saisie
+                // ne doivent pas disparaître pendant qu'on tape « Léa Marie »).
+                var name by remember { mutableStateOf(profile.name) }
                 OutlinedTextField(
                     value = name,
-                    onValueChange = { name = it; vm.updateProfile { p -> p.copy(name = it.trim()) } },
+                    onValueChange = { name = it; vm.updateProfile { p -> p.copy(name = it) } },
                     label = { Text("Prénom") },
                     singleLine = true,
                     keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Words),
@@ -99,6 +107,36 @@ fun SettingsScreen(vm: MainViewModel, onMessage: (String) -> Unit) {
                 Icons.Rounded.Cake, "Date de naissance",
                 profile.birthDate?.let { "${Fmt.dayFull(it)} · ${Fmt.age(it)}" } ?: "Non renseignée",
             ) { pickBirth = true }
+        }
+
+        Group("Rappel de repas") {
+            Column(Modifier.padding(16.dp)) {
+                Text(
+                    "Une notification quand le dernier repas date de :",
+                    style = MaterialTheme.typography.bodyLarge,
+                )
+                Spacer(Modifier.height(8.dp))
+                val options = listOf(0, 120, 150, 180, 210, 240)
+                ChoiceChips(
+                    options, profile.feedReminderMin,
+                    label = { if (it == 0) "Non" else Fmt.duration(it * 60_000L) },
+                    onSelect = { v ->
+                        vm.updateProfile { it.copy(feedReminderMin = v ?: 0) }
+                        if ((v ?: 0) > 0 && context.checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS) !=
+                            android.content.pm.PackageManager.PERMISSION_GRANTED
+                        ) {
+                            notifPermission.launch(android.Manifest.permission.POST_NOTIFICATIONS)
+                        }
+                    },
+                    allowDeselect = false,
+                )
+                Text(
+                    "Compté depuis le début du dernier repas. Rien n'est envoyé pendant une tétée en cours.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(top = 8.dp),
+                )
+            }
         }
 
         Group("Apparence") {

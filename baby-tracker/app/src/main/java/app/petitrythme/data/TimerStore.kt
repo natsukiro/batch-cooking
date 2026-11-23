@@ -117,6 +117,36 @@ class TimerStore(context: Context, private val onChange: (Timers) -> Unit) {
 
     fun cancelNursing() = set(_state.value.copy(nursing = null))
 
+    /**
+     * Corrige l'heure de début (chrono lancé en retard ou trop tôt). L'écart est
+     * reporté sur le sein en cours (ou le dernier utilisé si en pause).
+     */
+    fun setNursingStart(start: Long, now: Long = System.currentTimeMillis()) {
+        val n = _state.value.nursing ?: return
+        val s = start.coerceAtMost(now)
+        val delta = n.startedAt - s
+        val side = n.side ?: n.lastSide
+        // Si le côté actif est en cours, on décale le début du segment ; sinon on ajuste le cumul.
+        val next = if (n.side != null) {
+            n.copy(startedAt = s, segmentStart = (n.segmentStart - delta).coerceAtMost(now))
+        } else if (side == Side.L) {
+            n.copy(startedAt = s, leftMs = (n.leftMs + delta).coerceAtLeast(0))
+        } else {
+            n.copy(startedAt = s, rightMs = (n.rightMs + delta).coerceAtLeast(0))
+        }
+        set(_state.value.copy(nursing = next))
+    }
+
+    fun setSleepStart(start: Long, now: Long = System.currentTimeMillis()) {
+        if (_state.value.sleepStart == null) return
+        set(_state.value.copy(sleepStart = start.coerceAtMost(now)))
+    }
+
+    fun setPumpStart(start: Long, now: Long = System.currentTimeMillis()) {
+        if (_state.value.pumpStart == null) return
+        set(_state.value.copy(pumpStart = start.coerceAtMost(now)))
+    }
+
     fun startSleep(now: Long = System.currentTimeMillis()) = set(_state.value.copy(sleepStart = now))
 
     fun finishSleep(now: Long = System.currentTimeMillis()): Event? {

@@ -8,7 +8,6 @@ import app.petitrythme.BabyApp
 import app.petitrythme.data.Backup
 import app.petitrythme.data.Event
 import app.petitrythme.data.EventType
-import app.petitrythme.data.MilkKind
 import app.petitrythme.data.Profile
 import app.petitrythme.data.Side
 import app.petitrythme.data.Timers
@@ -32,7 +31,9 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
 
     val lastFeed = dao.observeLatest(EventType.FEEDINGS).state(null)
     val lastNursing = dao.observeLatest(listOf(EventType.NURSING)).state(null)
+    val lastBottle = dao.observeLatest(listOf(EventType.BOTTLE)).state(null)
     val lastDiaper = dao.observeLatest(listOf(EventType.DIAPER)).state(null)
+    val lastPoo = dao.observeLastPoo().state(null)
     val lastSleep = dao.observeLatest(listOf(EventType.SLEEP)).state(null)
     val growth = dao.observeRecent(EventType.GROWTH, 200).state(emptyList())
 
@@ -40,11 +41,10 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
 
     // --- Écriture -----------------------------------------------------------
 
-    suspend fun insert(e: Event): Long = dao.insert(e).also { remember(e) }
+    suspend fun insert(e: Event): Long = dao.insert(e)
 
     fun save(e: Event) = viewModelScope.launch {
         if (e.id == 0L) dao.insert(e) else dao.update(e)
-        remember(e)
     }
 
     fun delete(e: Event) = viewModelScope.launch { dao.delete(e) }
@@ -53,33 +53,26 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
 
     suspend fun deleteById(id: Long, type: EventType) = dao.delete(Event(id = id, type = type, time = 0))
 
-    /** Mémorise les dernières valeurs utilisées pour pré-remplir les prochaines saisies. */
-    private fun remember(e: Event) {
-        if (e.type == EventType.BOTTLE) {
-            baby.profile.update {
-                it.copy(
-                    lastBottleMl = e.amountMl?.toInt() ?: it.lastBottleMl,
-                    lastMilk = MilkKind.of(e.sub) ?: it.lastMilk,
-                )
-            }
-        }
-    }
-
     fun updateProfile(t: (Profile) -> Profile) = baby.profile.update(t)
+
+    /** Vrai la première fois seulement (pour ne pas redemander une autorisation refusée). */
+    fun firstTime(key: String) = baby.profile.once(key)
 
     // --- Chronomètres -------------------------------------------------------
 
     fun tapSide(side: Side) = baby.timers.tapSide(side)
-    fun pauseNursing() = baby.timers.pauseNursing()
     fun cancelNursing() = baby.timers.cancelNursing()
+    fun setNursingStart(t: Long) = baby.timers.setNursingStart(t)
     suspend fun finishNursing(): Event? = baby.timers.finishNursing()?.let { it.copy(id = dao.insert(it)) }
 
     fun startSleep() = baby.timers.startSleep()
     fun cancelSleep() = baby.timers.cancelSleep()
+    fun setSleepStart(t: Long) = baby.timers.setSleepStart(t)
     suspend fun finishSleep(): Event? = baby.timers.finishSleep()?.let { it.copy(id = dao.insert(it)) }
 
     fun startPump() = baby.timers.startPump()
     fun cancelPump() = baby.timers.cancelPump()
+    fun setPumpStart(t: Long) = baby.timers.setPumpStart(t)
 
     // --- Import / export ----------------------------------------------------
 
