@@ -10,6 +10,24 @@ d'invitation (le serveur n'en garde que l'empreinte).
 
 Prérequis : une machine allumée en permanence avec Docker (VPS, NAS, mini-PC…).
 
+### En une commande (recommandé)
+
+Copiez le dossier `server/` sur la machine (clone du dépôt, ou
+`scp -P <port> -r baby-tracker/server utilisateur@machine:~/petit-rythme-server`), puis :
+
+```bash
+cd ~/petit-rythme-server            # ou baby-tracker/server dans le clone
+sudo ./deploy.sh --lan --dry-run    # essai à blanc : affiche ce qui serait fait
+sudo ./deploy.sh --domain bebe.example.fr --create-token "$(openssl rand -hex 16)"   # HTTPS via Caddy
+sudo ./deploy.sh --behind-proxy     # si nginx/Caddy/Traefik occupe déjà 80/443 : affiche l'hôte virtuel à ajouter
+```
+
+Le script installe dans `/opt/petit-rythme-sync` (données dans `data/`, conservées lors des mises à
+jour), refuse de prendre un port déjà utilisé, et vérifie que le serveur répond. Un agent IA lancé
+sur la machine peut s'en charger : prompt [`../review/prompts/07-deployer-serveur.md`](../review/prompts/07-deployer-serveur.md).
+
+Les options manuelles ci-dessous restent possibles.
+
 ### Option A — Internet avec HTTPS (recommandé)
 
 Pour que la synchro marche aussi hors de la maison :

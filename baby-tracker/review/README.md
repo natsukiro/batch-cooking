@@ -21,6 +21,7 @@ Avec Claude Code, depuis la racine du dépôt : tapez `/petit-rythme-revue`.
 | Synchronisation et sécurité du serveur | [`04-revue-synchro-securite.md`](prompts/04-revue-synchro-securite.md) | `/petit-rythme-synchro` |
 | Corriger les rapports et livrer un APK | [`05-corriger-et-livrer.md`](prompts/05-corriger-et-livrer.md) | `/petit-rythme-corriger` |
 | Mettre à jour le calendrier vaccinal (chaque année) | [`06-calendrier-vaccinal.md`](prompts/06-calendrier-vaccinal.md) | — |
+| Déployer le serveur de synchro (agent lancé **sur** le serveur) | [`07-deployer-serveur.md`](prompts/07-deployer-serveur.md) | `/petit-rythme-deployer` |
 
 Les relectures écrivent un rapport dans `reports/` (modèle : [`RAPPORT_MODELE.md`](RAPPORT_MODELE.md)) ;
 la correction part de ces rapports. Vous pouvez aussi faire relire par une IA et corriger par une autre.
