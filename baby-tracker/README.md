@@ -13,9 +13,15 @@ Pensée pour être utilisée **d'une main, à 3 h du matin** : les gestes fréqu
 |---|---|---|---|
 | ![](docs/widget.png) | ![](docs/widget_tetee.png) | ![](docs/widget_nuit.png) | ![](docs/saisie_rapide_biberon.png) |
 
+### Rendez-vous
+
+| Liste | Fiche |
+|---|---|
+| ![](docs/rendez_vous.png) | ![](docs/rdv_fiche.png) |
+
 ## Installer
 
-1. Télécharger [`release/PetitRythme-1.1.apk`](release/PetitRythme-1.1.apk) sur le téléphone.
+1. Télécharger [`release/PetitRythme-1.2.apk`](release/PetitRythme-1.2.apk) sur le téléphone.
 2. L'ouvrir et autoriser l'installation depuis cette source si Android le demande.
 
 Android 12L (API 32) minimum. Les futures versions s'installent par-dessus sans perdre les données
@@ -54,8 +60,14 @@ croissance (poids, taille, périmètre crânien), notes.
 **Rythme** : vue 24 h sur 7 ou 14 jours (sommeil, repas, couches), moyennes sur les jours réellement suivis
 (intervalle réel entre deux repas, plus long dodo…), histogrammes par jour, courbe de poids.
 
+**Rendez-vous** (onglet RDV, à part du suivi quotidien) : pédiatre, vaccins, PMI, sage-femme, ostéo, kiné,
+examens… Pour chacun : date, praticien, lieu, **questions à poser** (à compléter au fil des jours), rappel la veille
+à 19 h et/ou 1 h avant, compte rendu après la visite. Bouton *Agenda* pour l'ajouter à l'agenda du téléphone
+(et le partager avec l'autre parent), et *Noter poids et taille* qui enchaîne sur la saisie de croissance.
+Un petit bandeau apparaît sur l'accueil quand un rendez-vous a lieu dans les 3 jours.
+
 **Réglages** : prénom, date de naissance (âge affiché), thème clair/sombre/auto, sauvegarde et restauration
-(JSON), export CSV pour un tableur ou le pédiatre.
+(JSON, journal et rendez-vous), export CSV pour un tableur ou le pédiatre.
 
 Toutes les données restent sur le téléphone. L'appli ne remplace pas un avis médical.
 

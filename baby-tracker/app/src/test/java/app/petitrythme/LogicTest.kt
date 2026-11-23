@@ -1,7 +1,10 @@
 package app.petitrythme
 
 import androidx.test.core.app.ApplicationProvider
+import app.petitrythme.data.Appointment
 import app.petitrythme.data.Backup
+import app.petitrythme.data.questionList
+import app.petitrythme.notify.ApptReminder
 import app.petitrythme.data.Event
 import app.petitrythme.data.EventType
 import app.petitrythme.data.Profile
@@ -150,6 +153,36 @@ class LogicTest {
     fun launcherShortcuts_areInstalled() {
         val labels = androidx.core.content.pm.ShortcutManagerCompat.getDynamicShortcuts(ctx).sortedBy { it.rank }.map { it.shortLabel.toString() }
         assertEquals(listOf("Pipi", "Caca", "Biberon", "Tétée"), labels)
+    }
+
+    @Test
+    fun apptReminders() {
+        val day = LocalDate.of(2026, 12, 2)
+        val at = day.atTime(10, 30).atZone(Fmt.zone).toInstant().toEpochMilli()
+        val eve = day.minusDays(1).atTime(19, 0).atZone(Fmt.zone).toInstant().toEpochMilli()
+        val a = Appointment(id = 1, time = at, remindEve = true, remindHour = true)
+        assertEquals(listOf(eve, at - 3_600_000L), ApptReminder.reminderTimes(a))
+        assertEquals(eve, ApptReminder.next(listOf(a), now = eve - 1000))
+        assertEquals(at - 3_600_000L, ApptReminder.next(listOf(a), now = eve + 1000))
+        assertNull(ApptReminder.next(listOf(a.copy(remindEve = false, remindHour = false)), now = 0))
+        // La veille à 19 h : dû entre 18 h 59 et 19 h 01, pas plus tard pour un RDV passé.
+        assertEquals(listOf(a), ApptReminder.due(listOf(a), eve - 60_000, eve + 60_000))
+        assertEquals(emptyList<Appointment>(), ApptReminder.due(listOf(a), at, at + 60_000))
+        val now = day.atTime(8, 0).atZone(Fmt.zone).toInstant().toEpochMilli()
+        assertEquals("aujourd'hui à 10:30", Fmt.apptWhen(at, now))
+        assertEquals("demain à 10:30", Fmt.apptWhen(at, now - 86_400_000L))
+        assertEquals("dans 5 j", Fmt.countdown(at, now - 5 * 86_400_000L))
+        assertEquals(listOf("Vitamine D ?", "Régurgitations"), a.copy(questions = "- Vitamine D ?\n\n• Régurgitations ").questionList())
+    }
+
+    @Test
+    fun backup_withAppointments() {
+        val appts = listOf(Appointment(id = 7, time = 99, kind = "VACCIN", who = "PMI", questions = "Q1\nQ2", remindHour = true))
+        val r = Backup.fromJson(Backup.toJson(emptyList(), Profile(), appts))
+        assertEquals(appts, r.appointments)
+        // Une sauvegarde d'avant les rendez-vous ne doit pas effacer ceux du téléphone.
+        val old = org.json.JSONObject(Backup.toJson(emptyList(), Profile())).apply { remove("appointments") }.toString()
+        assertNull(Backup.fromJson(old).appointments)
     }
 
     @Test

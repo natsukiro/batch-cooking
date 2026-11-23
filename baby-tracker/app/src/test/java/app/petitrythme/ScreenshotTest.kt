@@ -8,6 +8,7 @@ import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.test.core.app.ApplicationProvider
+import app.petitrythme.data.Appointment
 import app.petitrythme.data.Event
 import app.petitrythme.data.EventType
 import app.petitrythme.data.Side
@@ -78,6 +79,23 @@ class ScreenshotTest {
             events += Event(type = EventType.GROWTH, time = today0 - 16 * 24 * H, value = 3.98, heightCm = 52.5, headCm = 36.5)
             events += Event(type = EventType.GROWTH, time = today0 - 2 * 24 * H, value = 4.62, heightCm = 55.0, headCm = 37.8)
             runBlocking { app.db.events().replaceAll(events.filter { it.time < now }) }
+            val at = { daysFromToday: Long, h: Int, m: Int ->
+                Fmt.today().plusDays(daysFromToday).atTime(h, m).atZone(Fmt.zone).toInstant().toEpochMilli()
+            }
+            runBlocking {
+                app.db.appointments().replaceAll(listOf(
+                    Appointment(
+                        id = 1, time = at(1, 10, 30), kind = "PEDIATRE", who = "Dr Martin", place = "Cabinet des Lilas",
+                        questions = "Quand commencer la diversification ?\nVitamine D : quelle dose ?\nRégurgitations après la tétée",
+                    ),
+                    Appointment(id = 2, time = at(12, 9, 0), kind = "VACCIN", place = "PMI du quartier", remindHour = true),
+                    Appointment(
+                        id = 3, time = at(-16, 11, 0), kind = "PEDIATRE", who = "Dr Martin",
+                        notes = "Poids 3,98 kg, tout va bien. Vitamine D : 1 goutte par jour.",
+                    ),
+                    Appointment(id = 4, time = at(-30, 15, 0), kind = "SAGE_FEMME", who = "Mme Roux", notes = "Allaitement : bonne prise du sein."),
+                ))
+            }
             app.timers.cancelNursing()
             app.timers.cancelSleep()
             if (withTimer) {
@@ -160,6 +178,19 @@ class ScreenshotTest {
         org.junit.Assert.assertNull(app.timers.state.value.pumpStart)
         val pumps = runBlocking { app.db.events().all() }.filter { it.type == EventType.PUMP }
         org.junit.Assert.assertEquals(1, pumps.size)
+    }
+
+    @Test
+    fun appointments() {
+        seed(withTimer = false)
+        restart()
+        waitFor("Léa")
+        rule.onNodeWithText("RDV").performClick()
+        waitFor("À venir")
+        shot("16_rendez_vous")
+        rule.onAllNodes(hasText("Pédiatre · Dr Martin", substring = true))[0].performClick()
+        waitFor("Questions à poser")
+        shot("17_rdv_fiche")
     }
 
     @Test

@@ -50,6 +50,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import app.petitrythme.data.Appointment
 import app.petitrythme.data.Category
 import app.petitrythme.data.DiaperKind
 import app.petitrythme.data.Drafts
@@ -60,6 +61,8 @@ import app.petitrythme.data.Side
 import app.petitrythme.data.durationMs
 import app.petitrythme.ui.Fmt
 import app.petitrythme.ui.MainViewModel
+import app.petitrythme.ui.appointments.NextApptBanner
+import app.petitrythme.ui.appointments.nextSoon
 import app.petitrythme.ui.components.ConfirmDialog
 import app.petitrythme.ui.components.Pill
 import app.petitrythme.ui.components.TimePickDialog
@@ -87,6 +90,7 @@ fun HomeScreen(
     onSaved: (Event, String) -> Unit,
     onTimerStarted: () -> Unit,
     onOpenSettings: () -> Unit,
+    onOpenAppointment: (Appointment) -> Unit,
 ) {
     val profile by vm.profile.collectAsStateWithLifecycle()
     val timers by vm.timers.collectAsStateWithLifecycle()
@@ -95,6 +99,7 @@ fun HomeScreen(
     val lastDiaper by vm.lastDiaper.collectAsStateWithLifecycle()
     val lastPoo by vm.lastPoo.collectAsStateWithLifecycle()
     val lastBottle by vm.lastBottle.collectAsStateWithLifecycle()
+    val appointments by vm.appointments.collectAsStateWithLifecycle()
     val lastSleep by vm.lastSleep.collectAsStateWithLifecycle()
     val now by rememberNow()
     val today = Fmt.date(now)
@@ -131,6 +136,9 @@ fun HomeScreen(
             }
             Text(Fmt.time(now), style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
+
+        // Rendez-vous proche (moins de 3 jours) : un simple rappel, le détail est dans l'onglet RDV.
+        nextSoon(appointments, now)?.let { a -> NextApptBanner(a, now) { onOpenAppointment(a) } }
 
         // Chronos en cours
         timers.nursing?.let { n ->

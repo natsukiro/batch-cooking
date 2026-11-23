@@ -6,6 +6,7 @@ import androidx.room.InvalidationTracker
 import app.petitrythme.data.AppDatabase
 import app.petitrythme.data.ProfileStore
 import app.petitrythme.data.TimerStore
+import app.petitrythme.notify.ApptReminder
 import app.petitrythme.notify.FeedReminder
 import app.petitrythme.notify.TimerNotifier
 import app.petitrythme.quick.Shortcuts
@@ -43,9 +44,9 @@ class BabyApp : Application() {
             TimerNotifier.sync(this, it)
             refresh()
         }
-        // Toute écriture dans le journal (appli, widget, raccourci, restauration…) rafraîchit
-        // le widget et replanifie le rappel de repas.
-        db.invalidationTracker.addObserver(object : InvalidationTracker.Observer("events") {
+        // Toute écriture (appli, widget, raccourci, restauration…) rafraîchit le widget
+        // et replanifie les rappels (repas, rendez-vous).
+        db.invalidationTracker.addObserver(object : InvalidationTracker.Observer("events", "appointments") {
             override fun onInvalidated(tables: Set<String>) = refresh()
         })
         appScope.launch {
@@ -53,6 +54,7 @@ class BabyApp : Application() {
                 delay(300)
                 runCatching { BabyWidget().updateAll(this@BabyApp) }
                 runCatching { FeedReminder.reschedule(this@BabyApp) }
+                runCatching { ApptReminder.reschedule(this@BabyApp) }
             }
         }
         Shortcuts.installOnce(this)

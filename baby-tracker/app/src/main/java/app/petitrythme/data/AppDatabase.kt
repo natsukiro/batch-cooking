@@ -1,6 +1,7 @@
 package app.petitrythme.data
 
 import android.content.Context
+import androidx.room.AutoMigration
 import androidx.room.Dao
 import androidx.room.Database
 import androidx.room.Delete
@@ -65,10 +66,20 @@ class Converters {
     fun toType(s: String): EventType = EventType.entries.firstOrNull { it.name == s } ?: EventType.NOTE
 }
 
-@Database(entities = [Event::class], version = 1, exportSchema = true)
+/**
+ * Version 2 : ajout de la table des rendez-vous. La migration est générée par Room
+ * à partir des schémas exportés (app/schemas) : les données existantes sont conservées.
+ */
+@Database(
+    entities = [Event::class, Appointment::class],
+    version = 2,
+    exportSchema = true,
+    autoMigrations = [AutoMigration(from = 1, to = 2)],
+)
 @TypeConverters(Converters::class)
 abstract class AppDatabase : RoomDatabase() {
     abstract fun events(): EventDao
+    abstract fun appointments(): AppointmentDao
 
     companion object {
         fun build(context: Context): AppDatabase =

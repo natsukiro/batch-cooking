@@ -5,6 +5,7 @@ import android.net.Uri
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import app.petitrythme.BabyApp
+import app.petitrythme.data.Appointment
 import app.petitrythme.data.Backup
 import app.petitrythme.data.Event
 import app.petitrythme.data.EventType
@@ -22,6 +23,7 @@ import kotlinx.coroutines.withContext
 class MainViewModel(app: Application) : AndroidViewModel(app) {
     private val baby = app as BabyApp
     private val dao = baby.db.events()
+    private val apptDao = baby.db.appointments()
 
     val profile: StateFlow<Profile> = baby.profile.state
     val timers: StateFlow<Timers> = baby.timers.state
@@ -36,6 +38,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     val lastPoo = dao.observeLastPoo().state(null)
     val lastSleep = dao.observeLatest(listOf(EventType.SLEEP)).state(null)
     val growth = dao.observeRecent(EventType.GROWTH, 200).state(emptyList())
+    val appointments = apptDao.observeAll().state(emptyList())
 
     fun eventsBetween(from: Long, to: Long): Flow<List<Event>> = dao.observeBetween(from, to)
 
@@ -52,6 +55,11 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     fun restore(e: Event) = viewModelScope.launch { dao.insert(e) }
 
     suspend fun deleteById(id: Long, type: EventType) = dao.delete(Event(id = id, type = type, time = 0))
+
+    // --- Rendez-vous ---------------------------------------------------------
+
+    fun saveAppointment(a: Appointment) = viewModelScope.launch { apptDao.insert(a) }
+    fun deleteAppointment(a: Appointment) = viewModelScope.launch { apptDao.delete(a) }
 
     fun updateProfile(t: (Profile) -> Profile) = baby.profile.update(t)
 
@@ -77,7 +85,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     // --- Import / export ----------------------------------------------------
 
     suspend fun exportJson(uri: Uri) = withContext(Dispatchers.IO) {
-        val json = Backup.toJson(dao.all(), profile.value)
+        val json = Backup.toJson(dao.all(), profile.value, apptDao.all())
         write(uri, json)
     }
 
@@ -91,6 +99,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             .bufferedReader(Charsets.UTF_8).use { it.readText() }
         val r = Backup.fromJson(text)
         dao.replaceAll(r.events)
+        r.appointments?.let { apptDao.replaceAll(it) }
         baby.profile.update {
             it.copy(name = r.name ?: it.name, birthDate = r.birthDate ?: it.birthDate)
         }

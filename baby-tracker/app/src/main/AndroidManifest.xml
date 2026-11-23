@@ -51,6 +51,10 @@
             android:exported="false" />
 
         <receiver
+            android:name=".notify.ApptReminderReceiver"
+            android:exported="false" />
+
+        <receiver
             android:name=".notify.BootReceiver"
             android:exported="false">
             <intent-filter>

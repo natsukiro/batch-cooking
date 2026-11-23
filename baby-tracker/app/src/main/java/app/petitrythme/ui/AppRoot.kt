@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Event
 import androidx.compose.material.icons.rounded.Home
 import androidx.compose.material.icons.rounded.Insights
 import androidx.compose.material.icons.rounded.Settings
@@ -23,6 +24,7 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -33,8 +35,14 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
+import app.petitrythme.MainActivity
+import app.petitrythme.data.Appointment
 import app.petitrythme.data.Drafts
+import app.petitrythme.data.EventType
 import app.petitrythme.data.Event
+import app.petitrythme.ui.appointments.ApptSheet
+import app.petitrythme.ui.appointments.AppointmentsScreen
+import app.petitrythme.ui.appointments.newAppointment
 import app.petitrythme.ui.entry.EntrySheet
 import app.petitrythme.ui.entry.TypePickerSheet
 import app.petitrythme.ui.home.HomeScreen
@@ -49,12 +57,18 @@ private enum class Tab(val label: String, val icon: ImageVector) {
     HOME("Accueil", Icons.Rounded.Home),
     JOURNAL("Journal", Icons.Rounded.ViewAgenda),
     STATS("Rythme", Icons.Rounded.Insights),
+    APPOINTMENTS("RDV", Icons.Rounded.Event),
     SETTINGS("Réglages", Icons.Rounded.Settings),
 }
 
 @Composable
-fun AppRoot(vm: MainViewModel) {
+fun AppRoot(vm: MainViewModel, requestedTab: String? = null, onTabHandled: () -> Unit = {}) {
     var tab by rememberSaveable { mutableStateOf(Tab.HOME) }
+    var apptDraft by remember { mutableStateOf<Appointment?>(null) }
+    LaunchedEffect(requestedTab) {
+        if (requestedTab == MainActivity.TAB_APPOINTMENTS) tab = Tab.APPOINTMENTS
+        if (requestedTab != null) onTabHandled()
+    }
     var draft by remember { mutableStateOf<Event?>(null) }
     // Vrai quand la saisie en cours termine le chrono du tire-lait (il faut alors l'arrêter).
     var draftEndsPump by remember { mutableStateOf(false) }
@@ -132,6 +146,7 @@ fun AppRoot(vm: MainViewModel) {
                     onSaved = { e, text -> message(text, "Modifier") { draft = e } },
                     onTimerStarted = ::onTimerStarted,
                     onOpenSettings = { tab = Tab.SETTINGS },
+                    onOpenAppointment = { apptDraft = it },
                 )
                 Tab.JOURNAL -> JournalScreen(
                     vm,
@@ -142,6 +157,7 @@ fun AppRoot(vm: MainViewModel) {
                     onDelete = ::deleted,
                 )
                 Tab.STATS -> StatsScreen(vm, onOpenDay = { journalDay = it.toEpochDay(); tab = Tab.JOURNAL })
+                Tab.APPOINTMENTS -> AppointmentsScreen(vm, onOpen = { apptDraft = it }, onNew = { apptDraft = newAppointment() })
                 Tab.SETTINGS -> SettingsScreen(vm, onMessage = { message(it) })
             }
         }
@@ -155,6 +171,24 @@ fun AppRoot(vm: MainViewModel) {
             draft = Drafts.forType(type, at, vm.lastBottle.value)
             draftEndsPump = false
         }
+    }
+
+    apptDraft?.let { a ->
+        ApptSheet(
+            initial = a,
+            babyName = vm.profile.value.name.trim(),
+            onDismiss = { apptDraft = null },
+            onSave = { x ->
+                vm.saveAppointment(x)
+                message(if (x.id == 0L) "Rendez-vous ajouté" else "Rendez-vous mis à jour")
+            },
+            onDelete = { x ->
+                vm.deleteAppointment(x)
+                message("Rendez-vous supprimé", "Annuler") { vm.saveAppointment(x) }
+            },
+            onAddGrowth = { t -> draft = Drafts.forType(EventType.GROWTH, t); draftEndsPump = false },
+            onMessage = { message(it) },
+        )
     }
 
     draft?.let { d ->

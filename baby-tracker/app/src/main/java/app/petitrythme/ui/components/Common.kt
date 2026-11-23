@@ -176,7 +176,13 @@ fun <T> Segmented(
 
 /** Sélecteur date + heure sous forme de deux pastilles. */
 @Composable
-fun DateTimeField(label: String, millis: Long, onChange: (Long) -> Unit, modifier: Modifier = Modifier) {
+fun DateTimeField(
+    label: String,
+    millis: Long,
+    onChange: (Long) -> Unit,
+    modifier: Modifier = Modifier,
+    allowFuture: Boolean = false,
+) {
     var pickDate by remember { mutableStateOf(false) }
     var pickTime by remember { mutableStateOf(false) }
     val zdt = Instant.ofEpochMilli(millis).atZone(Fmt.zone)
@@ -201,7 +207,7 @@ fun DateTimeField(label: String, millis: Long, onChange: (Long) -> Unit, modifie
         )
     }
     if (pickDate) {
-        DatePickDialog(zdt.toLocalDate(), onDismiss = { pickDate = false }) { d ->
+        DatePickDialog(zdt.toLocalDate(), onDismiss = { pickDate = false }, allowFuture = allowFuture) { d ->
             onChange(d.atTime(zdt.toLocalTime()).atZone(Fmt.zone).toInstant().toEpochMilli())
         }
     }

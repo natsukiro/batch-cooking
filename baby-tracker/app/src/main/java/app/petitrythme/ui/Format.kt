@@ -15,6 +15,13 @@ object Fmt {
     private val dayLong = DateTimeFormatter.ofPattern("EEEE d MMMM", FR)
     private val dayShort = DateTimeFormatter.ofPattern("EEE d MMM", FR)
     private val dayFull = DateTimeFormatter.ofPattern("d MMMM yyyy", FR)
+    private val weekday = DateTimeFormatter.ofPattern("EEEE", FR)
+    private val dayMonth = DateTimeFormatter.ofPattern("d MMM", FR)
+    private val monthShort = DateTimeFormatter.ofPattern("MMM", FR)
+    private val weekdayShort = DateTimeFormatter.ofPattern("EEE", FR)
+
+    fun monthShort(d: LocalDate): String = d.format(monthShort).trimEnd('.')
+    fun weekdayShort(d: LocalDate): String = d.format(weekdayShort).trimEnd('.')
 
     fun time(ms: Long): String = Instant.ofEpochMilli(ms).atZone(zone).format(hm)
 
@@ -61,6 +68,31 @@ object Fmt {
             0L -> time(ms)
             1L -> "hier ${time(ms)}"
             else -> "il y a $days j"
+        }
+    }
+
+    /** Pour les rendez-vous : "aujourd'hui à 10:30", "demain à 10:30", "lundi à 10:30", "le 2 déc. à 10:30". */
+    fun apptWhen(ms: Long, now: Long): String {
+        val d = date(ms)
+        val days = ChronoUnit.DAYS.between(date(now), d)
+        val day = when {
+            days == 0L -> "aujourd'hui"
+            days == 1L -> "demain"
+            days == -1L -> "hier"
+            days in 2..6 -> d.format(weekday)
+            else -> "le " + d.format(if (d.year == date(now).year) dayMonth else dayFull)
+        }
+        return "$day à ${time(ms)}"
+    }
+
+    /** "dans 3 j", "dans 2 sem.", "dans 2 mois" (compte à rebours d'un rendez-vous). */
+    fun countdown(ms: Long, now: Long): String? {
+        val days = ChronoUnit.DAYS.between(date(now), date(ms))
+        return when {
+            days < 2 -> null
+            days < 14 -> "dans $days j"
+            days < 60 -> "dans ${days / 7} sem."
+            else -> "dans ${days / 30} mois"
         }
     }
 

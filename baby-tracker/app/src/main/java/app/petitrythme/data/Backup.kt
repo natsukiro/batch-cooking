@@ -9,9 +9,9 @@ import java.time.format.DateTimeFormatter
 
 /** Sauvegarde complète (JSON) et export tableur (CSV). */
 object Backup {
-    private const val FORMAT = 1
+    private const val FORMAT = 2
 
-    fun toJson(events: List<Event>, profile: Profile): String {
+    fun toJson(events: List<Event>, profile: Profile, appointments: List<Appointment> = emptyList()): String {
         val root = JSONObject()
         root.put("format", FORMAT)
         root.put("app", "Petit Rythme")
@@ -40,10 +40,29 @@ object Backup {
             })
         }
         root.put("events", arr)
+        root.put("appointments", JSONArray().apply {
+            for (a in appointments) put(JSONObject().apply {
+                put("id", a.id)
+                put("time", a.time)
+                put("kind", a.kind)
+                a.who?.let { put("who", it) }
+                a.place?.let { put("place", it) }
+                a.questions?.let { put("questions", it) }
+                a.notes?.let { put("notes", it) }
+                put("remindEve", a.remindEve)
+                put("remindHour", a.remindHour)
+            })
+        })
         return root.toString(1)
     }
 
-    data class Restored(val events: List<Event>, val name: String?, val birthDate: LocalDate?)
+    /** [appointments] vaut null pour une sauvegarde d'avant les rendez-vous (on ne touche alors pas à ceux du téléphone). */
+    data class Restored(
+        val events: List<Event>,
+        val name: String?,
+        val birthDate: LocalDate?,
+        val appointments: List<Appointment>? = null,
+    )
 
     fun fromJson(text: String): Restored {
         val root = JSONObject(text)
@@ -72,10 +91,28 @@ object Backup {
             )
         }
         val p = root.optJSONObject("profile")
+        val appts = root.optJSONArray("appointments")?.let { a ->
+            (0 until a.length()).map { i ->
+                val o = a.getJSONObject(i)
+                fun optS(k: String) = if (o.has(k)) o.getString(k) else null
+                Appointment(
+                    id = o.optLong("id", 0),
+                    time = o.getLong("time"),
+                    kind = o.optString("kind", ApptKind.AUTRE.code),
+                    who = optS("who"),
+                    place = optS("place"),
+                    questions = optS("questions"),
+                    notes = optS("notes"),
+                    remindEve = o.optBoolean("remindEve", true),
+                    remindHour = o.optBoolean("remindHour", false),
+                )
+            }
+        }
         return Restored(
             events = events,
             name = p?.optString("name")?.takeIf { it.isNotBlank() },
             birthDate = p?.optString("birthDate")?.let { runCatching { LocalDate.parse(it) }.getOrNull() },
+            appointments = appts,
         )
     }
 

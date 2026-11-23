@@ -154,7 +154,7 @@ fun SettingsScreen(vm: MainViewModel, onMessage: (String) -> Unit) {
         }
 
         Group("Données") {
-            Row_(Icons.Rounded.Download, "Sauvegarder", "Fichier complet, à garder dans Drive ou par mail") {
+            Row_(Icons.Rounded.Download, "Sauvegarder", "Journal et rendez-vous, à garder dans Drive ou par mail") {
                 exportJson.launch("petit-rythme-$stamp.json")
             }
             Row_(Icons.Rounded.Upload, "Restaurer une sauvegarde", "Remplace les données actuelles") {
