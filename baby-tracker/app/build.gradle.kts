@@ -13,8 +13,8 @@ android {
         applicationId = "app.petitrythme"
         minSdk = 32
         targetSdk = 36
-        versionCode = 3
-        versionName = "1.2"
+        versionCode = 4
+        versionName = "1.3"
     }
 
     // Clé de signature versionnée dans le dépôt : elle permet d'installer les
@@ -52,6 +52,8 @@ android {
             isIncludeAndroidResources = true
             all {
                 it.systemProperty("roborazzi.test.record", "true")
+                // Adresse d'un serveur de synchro lancé pour le test de bout en bout (voir scripts/verify.sh).
+                it.systemProperty("pr.sync.server", System.getenv("PR_SYNC_SERVER") ?: "")
                 it.systemProperty("robolectric.dependency.repo.url", "https://maven-central.storage-download.googleapis.com/maven2/")
                 it.systemProperty("roborazzi.record.filePathStrategy", "relativePathFromRoborazziContextOutputDirectory")
             }
@@ -84,6 +86,7 @@ dependencies {
     debugImplementation("androidx.compose.ui:ui-tooling")
 
     implementation("androidx.glance:glance-appwidget:1.1.1")
+    implementation("androidx.work:work-runtime-ktx:2.10.1")
 
     implementation("androidx.room:room-runtime:2.7.2")
     implementation("androidx.room:room-ktx:2.7.2")

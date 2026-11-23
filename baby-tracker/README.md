@@ -13,15 +13,15 @@ Pensée pour être utilisée **d'une main, à 3 h du matin** : les gestes fréqu
 |---|---|---|---|
 | ![](docs/widget.png) | ![](docs/widget_tetee.png) | ![](docs/widget_nuit.png) | ![](docs/saisie_rapide_biberon.png) |
 
-### Rendez-vous
+### Rendez-vous, vaccins et partage
 
-| Liste | Fiche |
-|---|---|
-| ![](docs/rendez_vous.png) | ![](docs/rdv_fiche.png) |
+| RDV et vaccins conseillés | Planifier un vaccin | Fiche RDV | Journal partagé | Réglages du partage |
+|---|---|---|---|---|
+| ![](docs/rendez_vous.png) | ![](docs/planifier_vaccin.png) | ![](docs/rdv_fiche.png) | ![](docs/journal_partage.png) | ![](docs/reglages_partage.png) |
 
 ## Installer
 
-1. Télécharger [`release/PetitRythme-1.2.apk`](release/PetitRythme-1.2.apk) sur le téléphone.
+1. Télécharger [`release/PetitRythme-1.3.apk`](release/PetitRythme-1.3.apk) sur le téléphone.
 2. L'ouvrir et autoriser l'installation depuis cette source si Android le demande.
 
 Android 12L (API 32) minimum. Les futures versions s'installent par-dessus sans perdre les données
@@ -66,18 +66,36 @@ examens… Pour chacun : date, praticien, lieu, **questions à poser** (à compl
 (et le partager avec l'autre parent), et *Noter poids et taille* qui enchaîne sur la saisie de croissance.
 Un petit bandeau apparaît sur l'accueil quand un rendez-vous a lieu dans les 3 jours.
 
+**Vaccins conseillés** (dans l'onglet RDV) : d'après le calendrier vaccinal 2026 et la date de naissance,
+les deux prochaines étapes (ex. « 2 mois : Hexavalent, Pneumocoque, Rotavirus (recommandé) ») avec
+*Planifier*, et le calendrier complet. Ce sont des suggestions, à confirmer avec le médecin.
+
+**Partage avec l'autre parent** (Réglages) : synchronisation via **votre propre serveur** (dossier
+[`server/`](server/README.md), Docker, HTTPS automatique en option). *Créer l'espace* sur un téléphone,
+*Inviter* (lien à envoyer par SMS/WhatsApp), l'autre parent l'ouvre et rejoint. Journal, rendez-vous,
+prénom/naissance et chronos en cours sont partagés ; le journal indique « par Maman / Papa ».
+Chaque téléphone garde tout en local et fonctionne hors ligne.
+
 **Réglages** : prénom, date de naissance (âge affiché), thème clair/sombre/auto, sauvegarde et restauration
 (JSON, journal et rendez-vous), export CSV pour un tableur ou le pédiatre.
 
 Toutes les données restent sur le téléphone. L'appli ne remplace pas un avis médical.
 
+## Faire vérifier et corriger l'appli par une IA
+
+Voir [`review/README.md`](review/README.md) : prompts prêts à l'emploi (code, UX, design, synchro,
+correction + nouvelle build), parcours attendus, décisions volontaires, et `scripts/verify.sh`
+qui vérifie tout en une commande. Les règles pour les IA sont dans [`AGENTS.md`](AGENTS.md).
+
 ## Développement
 
-Kotlin, Jetpack Compose (Material 3), Room, Glance (widget). Aucune dépendance réseau.
+Kotlin, Jetpack Compose (Material 3), Room, Glance (widget), WorkManager. Le seul réseau utilisé
+est votre serveur de synchro (facultatif).
 
 ```bash
-./gradlew assembleRelease        # APK signé : app/build/outputs/apk/release/
-./gradlew testDebugUnitTest      # tests + captures d'écran (Robolectric/Roborazzi)
+scripts/setup-android-sdk.sh     # une fois
+scripts/verify.sh                # tests serveur + appli + synchro de bout en bout + APK + contrôles
+scripts/release.sh               # publie release/PetitRythme-<version>.apk
 ```
 
-Les captures sont générées dans `app/build/outputs/roborazzi/`.
+Les captures sont copiées dans `review/screenshots/`.

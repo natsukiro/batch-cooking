@@ -13,3 +13,8 @@ Ce projet est un site web pour la planification de repas hebdomadaires (batch co
 
 - `/backend`: Contient la logique serveur (Python) pour le scraping, la planification et l'API.
 - `/frontend`: Contient l'interface utilisateur (HTML, CSS, JavaScript).
+
+## Petit Rythme (appli de suivi de bébé)
+
+Le dossier [`baby-tracker/`](baby-tracker/README.md) contient une application Android indépendante
+de suivi de bébé (et son serveur de synchronisation). Voir son README.

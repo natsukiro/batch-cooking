@@ -79,6 +79,9 @@ fun JournalScreen(
         feeds.zipWithNext().associate { (a, b) -> b.id to (b.time - a.time) }
     }
     var pickDay by remember { mutableStateOf(false) }
+    val sync by vm.sync.collectAsState()
+    // En suivi partagé, on indique qui a noté ce qui ne vient pas de ce téléphone.
+    val me = sync.me.trim().takeIf { sync.enabled }
 
     Box(Modifier.fillMaxSize()) {
         Column(Modifier.fillMaxSize()) {
@@ -156,7 +159,7 @@ fun JournalScreen(
                 }
                 items(dayEvents, key = { it.id }) { e ->
                     SwipeRow(e, onDelete = { onDelete(e) }) {
-                        EventRow(e, prevFeed[e.id], onClick = { onOpenEntry(e) })
+                        EventRow(e, prevFeed[e.id], by = e.author?.takeIf { me != null && it != me }, onClick = { onOpenEntry(e) })
                     }
                 }
             }
@@ -213,8 +216,9 @@ private fun SwipeRow(e: Event, onDelete: () -> Unit, content: @Composable () -> 
 }
 
 @Composable
-fun EventRow(e: Event, sincePrevFeed: Long?, onClick: () -> Unit) {
-    val (title, subtitle) = describe(e)
+fun EventRow(e: Event, sincePrevFeed: Long?, by: String? = null, onClick: () -> Unit) {
+    val (title, sub) = describe(e)
+    val subtitle = listOfNotNull(sub, by?.let { "par $it" }).joinToString(" · ").ifEmpty { null }
     Surface(
         onClick = onClick,
         color = MaterialTheme.colorScheme.surfaceContainerLow,

@@ -1,8 +1,19 @@
 package app.petitrythme.data
 
+import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.Index
 import androidx.room.PrimaryKey
+import java.util.UUID
+
+/** Identifiant global d'un enregistrement (le même sur les deux téléphones synchronisés). */
+fun newUid(): String = UUID.randomUUID().toString().replace("-", "")
+
+/** Valeurs posées sur chaque écriture locale (nom de l'auteur pour la synchro). */
+object Stamp {
+    @Volatile
+    var author: String? = null
+}
 
 enum class Category { FEED, DIAPER, SLEEP, CARE, HEALTH, GROWTH, NOTE }
 
@@ -40,7 +51,7 @@ enum class EventType(val label: String, val emoji: String, val category: Categor
  * - MEDICINE : [detail] = nom, [detail2] = dose
  * - GROWTH : [value] = poids (kg), [heightCm], [headCm]
  */
-@Entity(tableName = "events", indices = [Index("time"), Index("type")])
+@Entity(tableName = "events", indices = [Index("time"), Index("type"), Index(value = ["uid"], unique = true)])
 data class Event(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
     val type: EventType,
@@ -56,6 +67,14 @@ data class Event(
     val detail: String? = null,
     val detail2: String? = null,
     val note: String? = null,
+    // --- Synchronisation (v3) ---
+    @ColumnInfo(defaultValue = "") val uid: String = newUid(),
+    /** Dernière modification (ms) : la plus récente gagne en cas de conflit. */
+    @ColumnInfo(defaultValue = "0") val updatedAt: Long = 0,
+    /** Modifié sur ce téléphone et pas encore envoyé au serveur. */
+    @ColumnInfo(defaultValue = "0") val dirty: Boolean = false,
+    /** Prénom de la personne qui a noté l'évènement (« Papa », « Maman »…). */
+    val author: String? = null,
 )
 
 fun Event.durationMs(): Long = when {

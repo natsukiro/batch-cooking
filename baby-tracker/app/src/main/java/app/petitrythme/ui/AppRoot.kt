@@ -47,6 +47,7 @@ import app.petitrythme.ui.entry.EntrySheet
 import app.petitrythme.ui.entry.TypePickerSheet
 import app.petitrythme.ui.home.HomeScreen
 import app.petitrythme.ui.journal.JournalScreen
+import app.petitrythme.ui.settings.JoinSyncDialog
 import app.petitrythme.ui.settings.SettingsScreen
 import app.petitrythme.ui.stats.StatsScreen
 import kotlinx.coroutines.launch
@@ -62,7 +63,13 @@ private enum class Tab(val label: String, val icon: ImageVector) {
 }
 
 @Composable
-fun AppRoot(vm: MainViewModel, requestedTab: String? = null, onTabHandled: () -> Unit = {}) {
+fun AppRoot(
+    vm: MainViewModel,
+    requestedTab: String? = null,
+    onTabHandled: () -> Unit = {},
+    pendingJoin: String? = null,
+    onJoinHandled: () -> Unit = {},
+) {
     var tab by rememberSaveable { mutableStateOf(Tab.HOME) }
     var apptDraft by remember { mutableStateOf<Appointment?>(null) }
     LaunchedEffect(requestedTab) {
@@ -171,6 +178,14 @@ fun AppRoot(vm: MainViewModel, requestedTab: String? = null, onTabHandled: () ->
             draft = Drafts.forType(type, at, vm.lastBottle.value)
             draftEndsPump = false
         }
+    }
+
+    pendingJoin?.let { link ->
+        JoinSyncDialog(
+            vm, initial = link,
+            onDismiss = onJoinHandled,
+            onDone = { onJoinHandled(); message("Suivi partagé : bienvenue !") },
+        )
     }
 
     apptDraft?.let { a ->

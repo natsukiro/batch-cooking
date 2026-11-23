@@ -2,6 +2,7 @@ package app.petitrythme.data
 
 import android.content.Context
 import kotlinx.coroutines.flow.MutableStateFlow
+import org.json.JSONObject
 import kotlinx.coroutines.flow.StateFlow
 
 /** Chronomètre de tétée : cumule le temps par sein, avec pause et changement de côté. */
@@ -32,8 +33,8 @@ data class Timers(
  * Les chronomètres sont persistés : ils survivent à la fermeture de l'appli
  * ou au redémarrage du téléphone (on ne stocke que des horodatages).
  */
-class TimerStore(context: Context, private val onChange: (Timers) -> Unit) {
-    private val prefs = context.getSharedPreferences("timers", Context.MODE_PRIVATE)
+class TimerStore(context: Context, prefsName: String = "timers", private val onChange: (Timers) -> Unit) {
+    private val prefs = context.getSharedPreferences(prefsName, Context.MODE_PRIVATE)
     private val _state = MutableStateFlow(load())
     val state: StateFlow<Timers> = _state
 
@@ -57,8 +58,12 @@ class TimerStore(context: Context, private val onChange: (Timers) -> Unit) {
         )
     }
 
-    private fun set(t: Timers) {
+    private fun set(t: Timers, remoteUpdatedAt: Long? = null) {
         val e = prefs.edit().clear()
+        // Synchro : un changement local est horodaté et marqué « à envoyer » ;
+        // un changement reçu garde l'horodatage de l'autre téléphone.
+        e.putLong("sync_updatedAt", remoteUpdatedAt ?: System.currentTimeMillis())
+        e.putBoolean("sync_dirty", remoteUpdatedAt == null)
         t.nursing?.let {
             e.putLong("n_start", it.startedAt)
                 .putString("n_side", it.side?.code)
@@ -160,4 +165,59 @@ class TimerStore(context: Context, private val onChange: (Timers) -> Unit) {
     fun startPump(now: Long = System.currentTimeMillis()) = set(_state.value.copy(pumpStart = now))
 
     fun cancelPump() = set(_state.value.copy(pumpStart = null))
+
+    // --- Synchronisation ------------------------------------------------------
+    // Les chronos en cours sont partagés : si l'un lance une tétée ou un dodo,
+    // l'autre le voit (et peut l'arrêter).
+
+    val syncUpdatedAt get() = prefs.getLong("sync_updatedAt", 0)
+    val syncDirty get() = prefs.getBoolean("sync_dirty", false)
+
+    fun syncData(): JSONObject = JSONObject().apply {
+        val t = _state.value
+        t.nursing?.let {
+            put("nursing", JSONObject().apply {
+                put("startedAt", it.startedAt)
+                it.side?.let { s -> put("side", s.code) }
+                put("segmentStart", it.segmentStart)
+                put("leftMs", it.leftMs)
+                put("rightMs", it.rightMs)
+                put("lastSide", it.lastSide.code)
+            })
+        }
+        t.sleepStart?.let { put("sleepStart", it) }
+        t.pumpStart?.let { put("pumpStart", it) }
+    }
+
+    fun markSyncClean(updatedAt: Long) {
+        if (syncUpdatedAt == updatedAt) prefs.edit().putBoolean("sync_dirty", false).apply()
+    }
+
+    /** À l'activation : on ne partage nos chronos que s'il y en a un en cours. */
+    fun markSyncDirtyIfRunning() {
+        if (_state.value.any) prefs.edit().putBoolean("sync_dirty", true).apply()
+    }
+
+    fun applyRemote(data: JSONObject, updatedAt: Long) {
+        if (syncDirty && syncUpdatedAt > updatedAt) return
+        if (!syncDirty && syncUpdatedAt >= updatedAt) return
+        val n = data.optJSONObject("nursing")?.let {
+            NursingTimer(
+                startedAt = it.getLong("startedAt"),
+                side = Side.of(it.optString("side", "")),
+                segmentStart = it.getLong("segmentStart"),
+                leftMs = it.getLong("leftMs"),
+                rightMs = it.getLong("rightMs"),
+                lastSide = Side.of(it.optString("lastSide", "")) ?: Side.L,
+            )
+        }
+        set(
+            Timers(
+                nursing = n,
+                sleepStart = if (data.has("sleepStart")) data.getLong("sleepStart") else null,
+                pumpStart = if (data.has("pumpStart")) data.getLong("pumpStart") else null,
+            ),
+            remoteUpdatedAt = updatedAt,
+        )
+    }
 }

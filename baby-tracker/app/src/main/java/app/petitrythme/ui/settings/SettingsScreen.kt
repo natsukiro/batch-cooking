@@ -109,6 +109,10 @@ fun SettingsScreen(vm: MainViewModel, onMessage: (String) -> Unit) {
             ) { pickBirth = true }
         }
 
+        Group("Partage avec l'autre parent") {
+            SyncSection(vm, onMessage)
+        }
+
         Group("Rappel de repas") {
             Column(Modifier.padding(16.dp)) {
                 Text(
@@ -163,7 +167,12 @@ fun SettingsScreen(vm: MainViewModel, onMessage: (String) -> Unit) {
             Row_(Icons.Rounded.TableChart, "Exporter pour un tableur", "CSV lisible dans Excel / Sheets, utile pour le pédiatre") {
                 exportCsv.launch("petit-rythme-$stamp.csv")
             }
-            Row_(Icons.Rounded.DeleteForever, "Tout effacer", "Supprime définitivement le journal", danger = true) {
+            val shared = vm.sync.collectAsStateWithLifecycle().value.enabled
+            Row_(
+                Icons.Rounded.DeleteForever, "Tout effacer",
+                if (shared) "Supprime le journal sur les deux téléphones" else "Supprime définitivement le journal",
+                danger = true,
+            ) {
                 confirmClear = true
             }
         }

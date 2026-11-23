@@ -9,7 +9,7 @@ import java.time.format.DateTimeFormatter
 
 /** Sauvegarde complète (JSON) et export tableur (CSV). */
 object Backup {
-    private const val FORMAT = 2
+    private const val FORMAT = 3
 
     fun toJson(events: List<Event>, profile: Profile, appointments: List<Appointment> = emptyList()): String {
         val root = JSONObject()
@@ -20,39 +20,8 @@ object Backup {
             put("name", profile.name)
             profile.birthDate?.let { put("birthDate", it.toString()) }
         })
-        val arr = JSONArray()
-        for (e in events) {
-            arr.put(JSONObject().apply {
-                put("id", e.id)
-                put("type", e.type.name)
-                put("time", e.time)
-                e.endTime?.let { put("endTime", it) }
-                e.sub?.let { put("sub", it) }
-                e.amountMl?.let { put("amountMl", it) }
-                e.leftSec?.let { put("leftSec", it) }
-                e.rightSec?.let { put("rightSec", it) }
-                e.value?.let { put("value", it) }
-                e.heightCm?.let { put("heightCm", it) }
-                e.headCm?.let { put("headCm", it) }
-                e.detail?.let { put("detail", it) }
-                e.detail2?.let { put("detail2", it) }
-                e.note?.let { put("note", it) }
-            })
-        }
-        root.put("events", arr)
-        root.put("appointments", JSONArray().apply {
-            for (a in appointments) put(JSONObject().apply {
-                put("id", a.id)
-                put("time", a.time)
-                put("kind", a.kind)
-                a.who?.let { put("who", it) }
-                a.place?.let { put("place", it) }
-                a.questions?.let { put("questions", it) }
-                a.notes?.let { put("notes", it) }
-                put("remindEve", a.remindEve)
-                put("remindHour", a.remindHour)
-            })
-        })
+        root.put("events", JSONArray().apply { events.forEach { put(Codec.event(it).put("id", it.id)) } })
+        root.put("appointments", JSONArray().apply { appointments.forEach { put(Codec.appointment(it).put("id", it.id)) } })
         return root.toString(1)
     }
 
@@ -69,43 +38,13 @@ object Backup {
         val arr = root.getJSONArray("events")
         val events = (0 until arr.length()).map { i ->
             val o = arr.getJSONObject(i)
-            fun optD(k: String) = if (o.has(k)) o.getDouble(k) else null
-            fun optI(k: String) = if (o.has(k)) o.getInt(k) else null
-            fun optL(k: String) = if (o.has(k)) o.getLong(k) else null
-            fun optS(k: String) = if (o.has(k)) o.getString(k) else null
-            Event(
-                id = o.optLong("id", 0),
-                type = EventType.entries.firstOrNull { it.name == o.getString("type") } ?: EventType.NOTE,
-                time = o.getLong("time"),
-                endTime = optL("endTime"),
-                sub = optS("sub"),
-                amountMl = optD("amountMl"),
-                leftSec = optI("leftSec"),
-                rightSec = optI("rightSec"),
-                value = optD("value"),
-                heightCm = optD("heightCm"),
-                headCm = optD("headCm"),
-                detail = optS("detail"),
-                detail2 = optS("detail2"),
-                note = optS("note"),
-            )
+            Codec.event(o, id = o.optLong("id", 0))
         }
         val p = root.optJSONObject("profile")
         val appts = root.optJSONArray("appointments")?.let { a ->
             (0 until a.length()).map { i ->
                 val o = a.getJSONObject(i)
-                fun optS(k: String) = if (o.has(k)) o.getString(k) else null
-                Appointment(
-                    id = o.optLong("id", 0),
-                    time = o.getLong("time"),
-                    kind = o.optString("kind", ApptKind.AUTRE.code),
-                    who = optS("who"),
-                    place = optS("place"),
-                    questions = optS("questions"),
-                    notes = optS("notes"),
-                    remindEve = o.optBoolean("remindEve", true),
-                    remindHour = o.optBoolean("remindHour", false),
-                )
+                Codec.appointment(o, id = o.optLong("id", 0))
             }
         }
         return Restored(

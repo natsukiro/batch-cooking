@@ -2,7 +2,6 @@ package app.petitrythme
 
 import android.content.Context
 import android.database.sqlite.SQLiteDatabase
-import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
 import app.petitrythme.data.AppDatabase
 import app.petitrythme.data.Appointment
@@ -10,6 +9,7 @@ import app.petitrythme.data.EventType
 import kotlinx.coroutines.runBlocking
 import org.json.JSONObject
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNotEquals
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
@@ -47,17 +47,21 @@ class MigrationTest {
         db.version = 1
         db.close()
 
-        // 2) Ouverture par la nouvelle version : migration automatique v1 → v2.
-        val room = Room.databaseBuilder(ctx, AppDatabase::class.java, name).build()
+        // 2) Ouverture par la version actuelle : migrations v1 → v2 (auto) → v3 (synchro).
+        val room = AppDatabase.build(ctx, name)
         runBlocking {
             val events = room.events().all()
             assertEquals(2, events.size)
             assertEquals(EventType.BOTTLE, events[0].type)
             assertEquals(120.0, events[0].amountMl!!, 0.0)
+            // Chaque ligne existante reçoit un identifiant global unique pour la synchro.
+            assertEquals(32, events[0].uid.length)
+            assertNotEquals(events[0].uid, events[1].uid)
+            assertEquals(1000L, events[0].updatedAt)
             room.appointments().insert(Appointment(time = 5000, who = "Dr Martin", questions = "Vitamine D ?"))
             assertEquals("Dr Martin", room.appointments().all().single().who)
         }
-        assertEquals(2, room.openHelper.readableDatabase.version)
+        assertEquals(3, room.openHelper.readableDatabase.version)
         room.close()
     }
 }

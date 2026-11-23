@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  HTTP non chiffré autorisé pour pouvoir utiliser un serveur de synchro sur le réseau
+  de la maison (http://192.168.x.x:8080). L'appli prévient si une adresse http:// pointe
+  hors du réseau local ; HTTPS reste recommandé (voir server/README.md).
+-->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="true">
+        <trust-anchors>
+            <certificates src="system" />
+        </trust-anchors>
+    </base-config>
+</network-security-config>

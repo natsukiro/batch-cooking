@@ -61,6 +61,19 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     fun saveAppointment(a: Appointment) = viewModelScope.launch { apptDao.insert(a) }
     fun deleteAppointment(a: Appointment) = viewModelScope.launch { apptDao.delete(a) }
 
+    // --- Synchronisation entre parents ---------------------------------------
+
+    val sync = baby.sync.config.state
+
+    suspend fun createSync(server: String, me: String, token: String?) = runCatching { baby.sync.create(server, me, token) }
+    suspend fun joinSync(invite: String, server: String, me: String) = runCatching { baby.sync.join(invite, server, me) }
+    suspend fun syncNow() = baby.sync.sync()
+    fun setSyncName(me: String) = baby.sync.setMe(me)
+    fun leaveSync() {
+        baby.sync.leave()
+        runCatching { app.petitrythme.sync.SyncScheduler.disable(getApplication()) }
+    }
+
     fun updateProfile(t: (Profile) -> Profile) = baby.profile.update(t)
 
     /** Vrai la première fois seulement (pour ne pas redemander une autorisation refusée). */

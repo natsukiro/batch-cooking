@@ -3,6 +3,7 @@ package app.petitrythme.data
 import android.content.Context
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import org.json.JSONObject
 import java.time.LocalDate
 
 enum class ThemeMode(val label: String) { SYSTEM("Auto"), LIGHT("Clair"), DARK("Sombre") }
@@ -15,8 +16,8 @@ data class Profile(
     val feedReminderMin: Int = 0,
 )
 
-class ProfileStore(context: Context, private val onChange: (Profile) -> Unit = {}) {
-    private val prefs = context.getSharedPreferences("profile", Context.MODE_PRIVATE)
+class ProfileStore(context: Context, prefsName: String = "profile", private val onChange: (Profile) -> Unit = {}) {
+    private val prefs = context.getSharedPreferences(prefsName, Context.MODE_PRIVATE)
     private val _state = MutableStateFlow(load())
     val state: StateFlow<Profile> = _state
 
@@ -28,12 +29,58 @@ class ProfileStore(context: Context, private val onChange: (Profile) -> Unit = {
     )
 
     fun update(transform: (Profile) -> Profile) {
-        val p = transform(_state.value)
-        prefs.edit()
+        val old = _state.value
+        val p = transform(old)
+        val e = prefs.edit()
             .putString("name", p.name)
             .putString("birth", p.birthDate?.toString())
             .putInt("theme", p.theme.ordinal)
             .putInt("feedReminderMin", p.feedReminderMin)
+        // Seuls le prénom et la date de naissance sont partagés avec l'autre parent
+        // (thème et rappels restent propres à chaque téléphone).
+        if (p.name != old.name || p.birthDate != old.birthDate) {
+            e.putLong("sync_updatedAt", System.currentTimeMillis()).putBoolean("sync_dirty", true)
+        }
+        e.apply()
+        _state.value = p
+        onChange(p)
+    }
+
+    // --- Synchronisation ------------------------------------------------------
+
+    val syncUpdatedAt get() = prefs.getLong("sync_updatedAt", 0)
+    val syncDirty get() = prefs.getBoolean("sync_dirty", false)
+
+    fun syncData(): JSONObject = JSONObject().apply {
+        put("name", _state.value.name)
+        _state.value.birthDate?.let { put("birthDate", it.toString()) }
+    }
+
+    fun markSyncClean(updatedAt: Long) {
+        if (syncUpdatedAt == updatedAt) prefs.edit().putBoolean("sync_dirty", false).apply()
+    }
+
+    /** À l'activation de la synchro : on partage notre profil seulement s'il est renseigné. */
+    fun markSyncDirtyIfSet() {
+        if (_state.value.name.isNotBlank() || _state.value.birthDate != null) {
+            prefs.edit().putBoolean("sync_dirty", true).apply()
+        }
+    }
+
+    /** Applique le profil reçu de l'autre téléphone (le plus récent gagne). */
+    fun applyRemote(data: JSONObject, updatedAt: Long) {
+        if (syncDirty && syncUpdatedAt > updatedAt) return
+        if (!syncDirty && syncUpdatedAt >= updatedAt && updatedAt != 0L) return
+        val p = _state.value.copy(
+            name = data.optString("name", ""),
+            birthDate = data.optString("birthDate", "").takeIf { it.isNotEmpty() }
+                ?.let { runCatching { LocalDate.parse(it) }.getOrNull() },
+        )
+        prefs.edit()
+            .putString("name", p.name)
+            .putString("birth", p.birthDate?.toString())
+            .putLong("sync_updatedAt", updatedAt)
+            .putBoolean("sync_dirty", false)
             .apply()
         _state.value = p
         onChange(p)

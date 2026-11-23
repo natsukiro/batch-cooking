@@ -34,6 +34,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
@@ -50,6 +51,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import app.petitrythme.data.ApptKind
 import app.petitrythme.data.Appointment
+import app.petitrythme.data.VaccineSchedule
 import app.petitrythme.data.apptKind
 import app.petitrythme.ui.Fmt
 import app.petitrythme.ui.components.ConfirmDialog
@@ -118,6 +120,32 @@ fun ApptSheet(
                         onClick = { a = a.copy(kind = k.code) },
                         label = { Text("${k.emoji} ${k.label}") },
                     )
+                }
+            }
+
+            VaccineSchedule.step(a.vaccineKey)?.let { step ->
+                Surface(
+                    color = MaterialTheme.colorScheme.secondaryContainer,
+                    contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                    shape = RoundedCornerShape(14.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 10.dp),
+                ) {
+                    Column(Modifier.padding(12.dp)) {
+                        Text("Vaccins prévus à ${step.age}", style = MaterialTheme.typography.titleSmall)
+                        step.vaccines.forEach { v ->
+                            Text(
+                                "• ${v.label}" + (v.detail?.let { " — $it" } ?: ""),
+                                style = MaterialTheme.typography.bodySmall,
+                            )
+                        }
+                        Text(
+                            "Suggestion du calendrier officiel, à confirmer avec le médecin.",
+                            style = MaterialTheme.typography.bodySmall,
+                            modifier = Modifier.padding(top = 4.dp),
+                        )
+                    }
                 }
             }
 

@@ -30,6 +30,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.petitrythme.data.Appointment
+import app.petitrythme.data.VaccineSchedule
 import app.petitrythme.data.apptKind
 import app.petitrythme.data.questionList
 import app.petitrythme.ui.Fmt
@@ -50,6 +51,7 @@ fun isUpcoming(a: Appointment, now: Long) = a.time >= now - GRACE
 @Composable
 fun AppointmentsScreen(vm: MainViewModel, onOpen: (Appointment) -> Unit, onNew: () -> Unit) {
     val all by vm.appointments.collectAsStateWithLifecycle()
+    val profile by vm.profile.collectAsStateWithLifecycle()
     val now by rememberNow(60_000)
     val upcoming = all.filter { isUpcoming(it, now) }.sortedBy { it.time }
     val past = all.filterNot { isUpcoming(it, now) }.sortedByDescending { it.time }
@@ -66,6 +68,12 @@ fun AppointmentsScreen(vm: MainViewModel, onOpen: (Appointment) -> Unit, onNew: 
                         "Pédiatre, vaccins, PMI… avec les questions à ne pas oublier.",
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
+                }
+            }
+            item(key = "vaccines") {
+                val today = Fmt.date(now)
+                VaccineCard(profile.birthDate, all, today) { step ->
+                    profile.birthDate?.let { onOpen(vaccineDraft(step, it, today)) }
                 }
             }
             item(key = "upcomingTitle") { SectionTitle("À venir") }
@@ -153,6 +161,15 @@ fun ApptCard(a: Appointment, now: Long, past: Boolean, onClick: () -> Unit) {
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
+                VaccineSchedule.step(a.vaccineKey)?.let { step ->
+                    Text(
+                        "💉 ${step.age} : ${step.summary}",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
                 if (past) {
                     a.notes?.takeIf { it.isNotBlank() }?.let {
                         Text(

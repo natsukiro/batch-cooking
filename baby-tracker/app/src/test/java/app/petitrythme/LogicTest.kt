@@ -186,6 +186,20 @@ class LogicTest {
     }
 
     @Test
+    fun vaccineSuggestions() {
+        val birth = LocalDate.of(2026, 10, 16)
+        val steps = app.petitrythme.data.VaccineSchedule
+        // À 5 semaines : 2 mois puis 3 mois.
+        assertEquals(listOf("m2", "m3"), steps.suggestions(birth, birth.plusDays(38), emptySet()).map { it.key })
+        // Une étape planifiée disparaît des suggestions.
+        assertEquals(listOf("m3", "m4"), steps.suggestions(birth, birth.plusDays(38), setOf("m2")).map { it.key })
+        // À 7 mois, les étapes en retard de plus de 3 semaines ne sont plus proposées.
+        assertEquals(listOf("m11", "m12"), steps.suggestions(birth, birth.plusMonths(7), emptySet()).map { it.key })
+        assertEquals(LocalDate.of(2026, 12, 16), steps.step("m2")!!.due(birth))
+        assertTrue(steps.steps.flatMap { it.vaccines }.filter { !it.mandatory }.all { it.name == "Rotavirus" })
+    }
+
+    @Test
     fun formatting() {
         assertEquals("45 min", Fmt.duration(45 * 60_000L))
         assertEquals("2 h 05", Fmt.duration(125 * 60_000L))

@@ -12,6 +12,7 @@ import app.petitrythme.data.Appointment
 import app.petitrythme.data.Event
 import app.petitrythme.data.EventType
 import app.petitrythme.data.Side
+import app.petitrythme.sync.SyncState
 import app.petitrythme.ui.Fmt
 import android.os.Looper
 import com.github.takahirom.roborazzi.captureRoboImage
@@ -191,6 +192,37 @@ class ScreenshotTest {
         rule.onAllNodes(hasText("Pédiatre · Dr Martin", substring = true))[0].performClick()
         waitFor("Questions à poser")
         shot("17_rdv_fiche")
+    }
+
+    @Test
+    fun planVaccine() {
+        seed(withTimer = false)
+        restart()
+        waitFor("Léa")
+        rule.onNodeWithText("RDV").performClick()
+        waitFor("Vaccins conseillés")
+        rule.onAllNodes(hasText("Planifier"))[0].performClick()
+        waitFor("Vaccins prévus à 2 mois")
+        shot("18_planifier_vaccin")
+    }
+
+    /** Suivi partagé : ce que l'autre parent a noté porte son prénom. */
+    @Test
+    fun sharedJournal() {
+        seed(withTimer = false)
+        val app = ApplicationProvider.getApplicationContext<BabyApp>()
+        runBlocking {
+            val all = app.db.events().all()
+            all.filterIndexed { i, _ -> i % 3 == 0 }.forEach { app.db.events().insertRaw(it.copy(author = "Maman")) }
+        }
+        // Serveur volontairement injoignable : on ne teste ici que l'affichage.
+        app.sync.config.update { SyncState(server = "http://127.0.0.1:9", key = "A".repeat(32), me = "Papa") }
+        restart()
+        waitFor("Léa")
+        rule.onNodeWithText("Journal").performClick()
+        waitFor("par Maman")
+        shot("19_journal_partage")
+        app.sync.leave()
     }
 
     @Test
