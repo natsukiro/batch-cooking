@@ -8,7 +8,8 @@
 #   options : --port 8080  --dir /opt/petit-rythme-sync  --create-token MOTDEPASSE  --dry-run
 #
 # Le script ne touche à rien d'autre que son dossier d'installation et ses conteneurs.
-# Les données (data/) sont conservées lors d'une mise à jour.
+# Les données (data/), le jeton de création et un éventuel docker-compose.override.yml
+# (réseau du reverse proxy, nom du conteneur…) sont conservés lors d'une mise à jour.
 set -euo pipefail
 
 MODE=""; DOMAIN=""; PORT=8080; DIR=/opt/petit-rythme-sync; TOKEN=""; DRY=0
@@ -21,7 +22,7 @@ while [ $# -gt 0 ]; do
     --dir) DIR="$2"; shift 2 ;;
     --create-token) TOKEN="$2"; shift 2 ;;
     --dry-run) DRY=1; shift ;;
-    -h|--help) sed -n '2,14p' "$0"; exit 0 ;;
+    -h|--help) sed -n '2,15p' "$0"; exit 0 ;;
     *) echo "Option inconnue : $1" >&2; exit 2 ;;
   esac
 done
@@ -46,7 +47,7 @@ docker compose version >/dev/null 2>&1 || die "Le plugin « docker compose » ma
 case "$MODE" in
   https)
     for p in 80 443; do
-      if port_busy "$p" && ! docker ps --format '{{.Names}}' 2>/dev/null | grep -q '^petit-rythme-sync-caddy'; then
+      if port_busy "$p" && ! docker ps --format '{{.Names}}' 2>/dev/null | grep -q '^petit-rythme-sync'; then
         die "Le port $p est déjà utilisé (site existant ?). Utilisez --behind-proxy et ajoutez un hôte virtuel (voir README)."
       fi
     done
@@ -54,11 +55,16 @@ case "$MODE" in
   proxy) BIND=127.0.0.1 ;;
   lan) BIND=0.0.0.0 ;;
 esac
-if port_busy "$PORT" && ! docker ps --format '{{.Names}}' 2>/dev/null | grep -q '^petit-rythme-sync-sync'; then
+if port_busy "$PORT" && ! docker ps --format '{{.Names}}' 2>/dev/null | grep -q '^petit-rythme-sync'; then
   die "Le port $PORT est déjà utilisé : choisissez-en un autre avec --port."
 fi
 
-# 3. Copie des fichiers (les données existantes sont conservées)
+# Mise à jour : on garde le jeton de création déjà en place si aucun n'est donné.
+if [ -z "$TOKEN" ] && [ -f "$DIR/.env" ]; then
+  TOKEN="$(sed -n 's/^PR_CREATE_TOKEN=//p' "$DIR/.env")"
+fi
+
+# 3. Copie des fichiers (les données, .env existant et docker-compose.override.yml sont conservés)
 say "Installation dans $DIR"
 run "mkdir -p '$DIR/data'"
 for f in app.py requirements.txt Dockerfile docker-compose.yml Caddyfile README.md; do

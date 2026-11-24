@@ -3,7 +3,14 @@
 Ce dossier permet de confier à une autre IA (ou à un·e développeur·se) la **vérification** de
 Petit Rythme — code, UX, design, synchro — puis la **correction** avec une **nouvelle build**.
 
-## Le plus simple
+## Le plus simple — appli + serveur en production
+
+Collez [`prompts/08-cycle-prod.md`](prompts/08-cycle-prod.md) dans une IA de code ayant accès au dépôt
+(idéalement lancée sur le serveur, pour qu'elle puisse aussi redéployer). Elle lit les fichiers
+ci-dessous, relit, corrige, livre un APK et redéploie le serveur si besoin.
+Avec Claude Code : `/petit-rythme-prod`.
+
+## Appli seule
 
 Ouvrez une IA de code qui a accès à ce dépôt (Claude Code, Codex, Cursor, Gemini CLI…) et collez
 le contenu de [`prompts/00-cycle-complet.md`](prompts/00-cycle-complet.md). Elle relit tout, vous
@@ -21,6 +28,7 @@ Avec Claude Code, depuis la racine du dépôt : tapez `/petit-rythme-revue`.
 | Synchronisation et sécurité du serveur | [`04-revue-synchro-securite.md`](prompts/04-revue-synchro-securite.md) | `/petit-rythme-synchro` |
 | Corriger les rapports et livrer un APK | [`05-corriger-et-livrer.md`](prompts/05-corriger-et-livrer.md) | `/petit-rythme-corriger` |
 | Mettre à jour le calendrier vaccinal (chaque année) | [`06-calendrier-vaccinal.md`](prompts/06-calendrier-vaccinal.md) | — |
+| Relire + corriger + redéployer (appli et serveur en production) | [`08-cycle-prod.md`](prompts/08-cycle-prod.md) | `/petit-rythme-prod` |
 | Déployer le serveur de synchro (agent lancé **sur** le serveur) | [`07-deployer-serveur.md`](prompts/07-deployer-serveur.md) | `/petit-rythme-deployer` |
 
 Les relectures écrivent un rapport dans `reports/` (modèle : [`RAPPORT_MODELE.md`](RAPPORT_MODELE.md)) ;
@@ -32,6 +40,7 @@ la correction part de ces rapports. Vous pouvez aussi faire relire par une IA et
   contenu médical), conventions d'interface, pièges connus.
 - [`PARCOURS.md`](PARCOURS.md) : ce que chaque écran doit faire, en nombre d'appuis — la référence
   pour dire « c'est un bug ».
+- [`../server/PRODUCTION.md`](../server/PRODUCTION.md) : ce qui tourne en production et les contraintes.
 - [`DECISIONS.md`](DECISIONS.md) : choix volontaires à ne pas « corriger » sans vous en parler.
 - [`../scripts/verify.sh`](../scripts/verify.sh) : vérification complète en une commande
   (tests du serveur, tests de l'appli dont migration et synchro de bout en bout, APK signé,

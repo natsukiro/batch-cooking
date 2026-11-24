@@ -110,6 +110,12 @@ WorkManager 2.10, compileSdk/targetSdk 36, minSdk 32. Tests : Robolectric 4.16 +
 - Maven Central limite parfois le débit (429) : `settings.gradle.kts` passe d'abord par le miroir
   Google de Maven Central ; Robolectric aussi (`robolectric.dependency.repo.url`).
 
+## Production
+
+Le serveur de synchro tourne sur `https://rythme.natsukiro.info` (Docker derrière Zoraxy, sauvegarde
+`backup-rebuild`). Avant toute modification de `server/` ou de son déploiement, lire
+[`server/PRODUCTION.md`](server/PRODUCTION.md). Ne jamais écrire d'identifiants dans le dépôt.
+
 ## Environnement
 
 - Réseau nécessaire : `dl.google.com` (SDK Android + Maven Google), registres Maven/PyPI.
