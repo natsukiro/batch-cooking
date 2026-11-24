@@ -21,7 +21,7 @@ Pensée pour être utilisée **d'une main, à 3 h du matin** : les gestes fréqu
 
 ## Installer
 
-1. Télécharger [`release/PetitRythme-1.3.apk`](release/PetitRythme-1.3.apk) sur le téléphone.
+1. Télécharger [`release/PetitRythme-1.3.1.apk`](release/PetitRythme-1.3.1.apk) sur le téléphone.
 2. L'ouvrir et autoriser l'installation depuis cette source si Android le demande.
 
 Android 12L (API 32) minimum. Les futures versions s'installent par-dessus sans perdre les données

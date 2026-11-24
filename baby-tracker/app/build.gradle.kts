@@ -13,8 +13,8 @@ android {
         applicationId = "app.petitrythme"
         minSdk = 32
         targetSdk = 36
-        versionCode = 4
-        versionName = "1.3"
+        versionCode = 5
+        versionName = "1.3.1"
     }
 
     // Clé de signature versionnée dans le dépôt : elle permet d'installer les

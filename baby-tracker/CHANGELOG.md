@@ -3,6 +3,11 @@
 Chaque version publiée a une section ici (obligatoire pour `scripts/release.sh`).
 `versionCode` augmente de 1 à chaque version ; la signature ne change jamais (`keystore/`).
 
+## 1.3.1 (versionCode 5)
+
+- L'adresse du serveur de la famille (`https://rythme.natsukiro.info`) est proposée par défaut pour
+  créer ou rejoindre le partage ; un code d'invitation seul suffit désormais.
+
 ## 1.3 (versionCode 4)
 
 - **Synchronisation entre parents** via un serveur personnel (`server/`, Flask + SQLite + Docker,

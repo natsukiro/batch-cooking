@@ -162,6 +162,14 @@ class SyncTest {
     }
 
     @Test
+    fun inviteParsing_defaultsToFamilyServer() {
+        val code = "ABCD EFGH IJKL MNOP QRST UVWX YZ23 4567"
+        assertEquals(SyncConfig.DEFAULT_SERVER to "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567", SyncConfig.parseInvite(code))
+        assertEquals("https://autre.fr" to "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567", SyncConfig.parseInvite(code, "autre.fr/"))
+        assertEquals("https://rythme.natsukiro.info" to "K".repeat(32), SyncConfig.parseInvite("https://rythme.natsukiro.info/join#k=" + "K".repeat(32)))
+    }
+
+    @Test
     fun wrongInvite_isRejected() {
         val t = FakeServer()
         val p = Phone("intrus", t)

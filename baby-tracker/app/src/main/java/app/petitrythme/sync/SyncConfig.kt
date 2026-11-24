@@ -54,6 +54,9 @@ class SyncConfig(context: Context, prefsName: String = "sync") {
     }
 
     companion object {
+        /** Serveur de la famille, proposé par défaut (modifiable). */
+        const val DEFAULT_SERVER = "https://rythme.natsukiro.info"
+
         private const val ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567"
 
         /** Clé famille : 160 bits aléatoires en base32 (32 caractères). */
@@ -110,8 +113,8 @@ class SyncConfig(context: Context, prefsName: String = "sync") {
                 return normalizeServer(server) to normalizeKey(key)
             }
             val key = normalizeKey(t)
-            if (key.length < 20 || fallbackServer.isBlank()) return null
-            return normalizeServer(fallbackServer) to key
+            if (key.length < 20) return null
+            return normalizeServer(fallbackServer.ifBlank { DEFAULT_SERVER }) to key
         }
     }
 }

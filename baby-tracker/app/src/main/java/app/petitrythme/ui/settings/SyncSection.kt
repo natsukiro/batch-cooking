@@ -146,7 +146,7 @@ private fun InsecureWarning() {
 @Composable
 private fun CreateSyncDialog(vm: MainViewModel, onDismiss: () -> Unit, onDone: () -> Unit) {
     val scope = rememberCoroutineScope()
-    var server by remember { mutableStateOf("") }
+    var server by remember { mutableStateOf(SyncConfig.DEFAULT_SERVER) }
     var me by remember { mutableStateOf(vm.sync.value.me) }
     var token by remember { mutableStateOf("") }
     var busy by remember { mutableStateOf(false) }
@@ -159,7 +159,7 @@ private fun CreateSyncDialog(vm: MainViewModel, onDismiss: () -> Unit, onDone: (
                 Text("Adresse de votre serveur de synchro :", style = MaterialTheme.typography.bodyMedium)
                 OutlinedTextField(
                     value = server, onValueChange = { server = it; error = null },
-                    placeholder = { Text("https://bebe.example.fr") }, singleLine = true,
+                    singleLine = true,
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri),
                     modifier = Modifier.fillMaxWidth(),
                 )
@@ -203,7 +203,7 @@ private fun CreateSyncDialog(vm: MainViewModel, onDismiss: () -> Unit, onDone: (
 fun JoinSyncDialog(vm: MainViewModel, initial: String, onDismiss: () -> Unit, onDone: () -> Unit) {
     val scope = rememberCoroutineScope()
     var invite by remember { mutableStateOf(initial) }
-    var server by remember { mutableStateOf("") }
+    var server by remember { mutableStateOf(SyncConfig.DEFAULT_SERVER) }
     var me by remember { mutableStateOf(vm.sync.value.me) }
     var busy by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
@@ -227,7 +227,7 @@ fun JoinSyncDialog(vm: MainViewModel, initial: String, onDismiss: () -> Unit, on
                 if (needsServer) {
                     OutlinedTextField(
                         value = server, onValueChange = { server = it },
-                        label = { Text("Adresse du serveur") }, placeholder = { Text("https://bebe.example.fr") },
+                        label = { Text("Adresse du serveur") },
                         singleLine = true, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri),
                         modifier = Modifier
                             .fillMaxWidth()
